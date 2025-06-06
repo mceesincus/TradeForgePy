@@ -1,0 +1,9 @@
+pydantic>=2.0
+httpx[http2]>=0.25.0
+python-dotenv>=1.0.0
+pysignalr>=0.2.0
+
+[dev]
+pytest
+pytest-asyncio
+respx

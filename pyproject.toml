@@ -1,0 +1,45 @@
+# ==============================================================================
+# pyproject.toml
+# ==============================================================================
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradeforgepy"
+version = "0.1.0"
+authors = [
+  { name="Your Name", email="you@example.com" },
+]
+description = "Generic Trading API Library with TopStepX Provider"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" } # Use SPDX license expression instead of classifier
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+# --- Core Dependencies ---
+dependencies = [
+    "pydantic>=2.0",
+    "httpx[http2]>=0.25.0", # Async HTTP client with HTTP/2 support
+    "python-dotenv>=1.0.0", # For reading .env files
+    "pysignalr>=0.2.0"      # CORRECTED: For SignalR streaming
+]
+
+# --- Optional Dependencies (for development) ---
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "respx" # For mocking httpx in tests
+]
+
+# --- Tool-Specific Configuration ---
+
+# This section tells setuptools where to find your package source code.
+# It's the key to fixing the "Multiple top-level packages" error.
+[tool.setuptools.packages.find]
+where = ["src"]  # Look for packages in the 'src' directory
