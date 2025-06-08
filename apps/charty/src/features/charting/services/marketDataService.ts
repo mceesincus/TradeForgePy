@@ -1,6 +1,5 @@
 // src/features/charting/services/marketDataService.ts
 import { OhlcData, UTCTimestamp } from 'lightweight-charts';
-// ** UPDATED IMPORT PATH **
 import { websocketService } from '../../../services/websocketService';
 
 export interface CandlestickData extends OhlcData {
@@ -9,10 +8,12 @@ export interface CandlestickData extends OhlcData {
 
 export const getMockHistoricalData = (): CandlestickData[] => {
   const data: CandlestickData[] = [];
-  let time = (Math.floor(Date.now() / 1000) - 200 * 86400) as UTCTimestamp;
+  // Start 75 days ago
+  let time = (Math.floor(Date.now() / 1000) - 75 * 86400) as UTCTimestamp;
   let price = 5000;
 
-  for (let i = 0; i < 200; i++) {
+  // Generate 75 mock candles
+  for (let i = 0; i < 75; i++) {
     const open = price + (Math.random() - 0.5) * 10;
     const close = open + (Math.random() - 0.5) * 20;
     const high = Math.max(open, close) + Math.random() * 5;

@@ -1,6 +1,7 @@
 // src/components/layout/Header.tsx
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/shared/ThemeToggle'; // Import the new component
 
 export const Header: React.FC = () => {
   return (
@@ -9,7 +10,6 @@ export const Header: React.FC = () => {
         Trading Application
       </div>
       
-      {/* Mock Account Info */}
       <div className="flex items-center gap-4 text-sm">
         <div className='text-right'>
           <p className='font-bold text-foreground'>$50,071.02</p>
@@ -24,6 +24,8 @@ export const Header: React.FC = () => {
         <div>
           <p className='text-sm text-foreground'>Bot Status: <span className='font-semibold text-red-500'>Inactive</span></p>
         </div>
+        {/* Add the theme toggle button here */}
+        <ThemeToggle />
       </div>
     </header>
   );
