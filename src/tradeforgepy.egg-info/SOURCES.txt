@@ -1,4 +1,6 @@
+README.md
 pyproject.toml
+src/tradeforgepy/config.py
 src/tradeforgepy.egg-info/PKG-INFO
 src/tradeforgepy.egg-info/SOURCES.txt
 src/tradeforgepy.egg-info/dependency_links.txt

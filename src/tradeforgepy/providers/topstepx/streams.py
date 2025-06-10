@@ -1,9 +1,7 @@
 # tradeforgepy/providers/topstepx/streams.py
-# FINALIZED version based on captured live stream data.
-
 import asyncio
 import logging
-from typing import Callable, Awaitable, Optional, List, Any, Dict
+from typing import Callable, Awaitable, Optional, List, Any, Dict, Set
 
 from pysignalr.client import SignalRClient
 from pysignalr.exceptions import ConnectionError as PySignalRConnectionError
@@ -14,64 +12,126 @@ from tradeforgepy.exceptions import ConnectionError as TradeForgeConnectionError
 
 logger = logging.getLogger(__name__)
 
-# Type aliases
 InternalGenericEventCallback = Callable[[GenericStreamEvent], Awaitable[None]]
 InternalStatusChangeCallback = Callable[[str, StreamConnectionStatus, Optional[str]], Awaitable[None]]
 InternalErrorCallback = Callable[[str, Exception], Awaitable[None]]
 
-
 class _BaseTopStepXStream:
-    # ... (The entire _BaseTopStepXStream class code from the previous "Complete code" response is correct and can be used here without changes) ...
-    # For completeness, I'm pasting it again.
-    
-    def __init__(self, hub_base_url_no_protocol: str, initial_token: str, event_callback: InternalGenericEventCallback, status_callback: InternalStatusChangeCallback, error_callback: InternalErrorCallback, stream_name: str):
-        self.hub_base_url_no_protocol = hub_base_url_no_protocol; self._current_token = initial_token; self.event_callback = event_callback; self.status_callback = status_callback; self.error_callback = error_callback; self.stream_name = stream_name; self.connection: Optional[SignalRClient] = None; self.current_status = StreamConnectionStatus.DISCONNECTED; self._connection_lock = asyncio.Lock(); self._run_task: Optional[asyncio.Task] = None; self._is_manually_stopping = False; self._is_connected_signalr = False; self._wss_hub_url_no_token: str = self._prepare_wss_url(hub_base_url_no_protocol); self._hub_url_with_token: str = self._build_url_with_token(self._wss_hub_url_no_token, self._current_token); logger.info(f"BaseTopStepXStream '{self.stream_name}' initialized.")
-    def _prepare_wss_url(self, hub_url: str) -> str:
-        if hub_url.startswith("https://"): return "wss://" + hub_url[len("https://"):];
-        if hub_url.startswith("http://"): return "ws://" + hub_url[len("http://"):];
-        return f"wss://{hub_url}"
-    def _build_url_with_token(self, base_url: str, token: str) -> str: return f"{base_url}?access_token={token}"
-    async def _update_status(self, new_status: StreamConnectionStatus, reason: Optional[str] = None):
-        if self.current_status != new_status: old = self.current_status; self.current_status = new_status; logger.info(f"{self.stream_name} status: {old.value} -> {new_status.value} (Reason: {reason or 'N/A'})"); await self.status_callback(self.stream_name, new_status, reason)
-    async def _pysignalr_on_open(self): self._is_connected_signalr = True; logger.info(f"{self.stream_name} connection opened."); await self._update_status(StreamConnectionStatus.CONNECTED, "SignalR connected")
-    async def _pysignalr_on_close(self): self._is_connected_signalr = False; logger.info(f"{self.stream_name} connection closed."); await self._update_status(StreamConnectionStatus.DISCONNECTED if not self._is_manually_stopping else StreamConnectionStatus.STOPPED, "SignalR closed")
-    async def _pysignalr_on_error(self, err: Any): self._is_connected_signalr = False; exc = err if isinstance(err, Exception) else Exception(str(err)); await self._update_status(StreamConnectionStatus.ERROR, f"SignalR error: {str(exc)[:100]}"); await self.error_callback(self.stream_name, exc)
-    async def connect_and_run_forever(self):
-        async with self._connection_lock:
-            if self._run_task and not self._run_task.done(): logger.warning(f"{self.stream_name} already running."); return
-            self._is_manually_stopping = False; await self._update_status(StreamConnectionStatus.CONNECTING)
-            if not self._current_token: err = AuthenticationError("Token missing"); await self._update_status(StreamConnectionStatus.ERROR, err.args[0]); await self.error_callback(self.stream_name, err); return
-            self._hub_url_with_token = self._build_url_with_token(self._wss_hub_url_no_token, self._current_token); logger.info(f"{self.stream_name} connecting...")
-            try: self.connection = SignalRClient(self._hub_url_with_token); self.connection.on_open(self._pysignalr_on_open); self.connection.on_close(self._pysignalr_on_close); self.connection.on_error(self._pysignalr_on_error); self._register_specific_handlers()
-            except Exception as e: await self._update_status(StreamConnectionStatus.ERROR, f"Setup failed: {e}"); await self.error_callback(self.stream_name, e); return
-        try: logger.info(f"{self.stream_name} starting run loop..."); self._run_task = asyncio.create_task(self.connection.run(), name=f"{self.stream_name}_Run"); await self._run_task
-        except asyncio.CancelledError: logger.info(f"{self.stream_name} run task cancelled."); await self._update_status(StreamConnectionStatus.STOPPED, "Run task cancelled")
-        except Exception as e: await self._update_status(StreamConnectionStatus.ERROR, f"Run error: {type(e).__name__}"); await self.error_callback(self.stream_name, e)
-        finally: self._run_task = None; await self._update_status(StreamConnectionStatus.DISCONNECTED, "Run loop finished")
-    async def disconnect(self):
-        async with self._connection_lock:
-            if self._is_manually_stopping: return
-            self._is_manually_stopping = True; await self._update_status(StreamConnectionStatus.STOPPING, "Client requested disconnect")
-            if self._run_task and not self._run_task.done(): self._run_task.cancel()
-            if self.connection and self._is_connected_signalr: await self.connection.stop()
-            else: await self._pysignalr_on_close()
-    async def update_token(self, token: str):
-        async with self._connection_lock:
-            if token == self._current_token: return
-            self._current_token = token; self._hub_url_with_token = self._build_url_with_token(self._wss_hub_url_no_token, self._current_token); logger.info(f"{self.stream_name} token updated. Restart required.")
-            if self.current_status not in [StreamConnectionStatus.DISCONNECTED, StreamConnectionStatus.STOPPED, StreamConnectionStatus.ERROR]: await self.disconnect()
-    def _register_specific_handlers(self): raise NotImplementedError
-    async def _invoke_subscription(self, method: str, args: List[Any], log_name: str):
-        if not self.connection or not self._is_connected_signalr: logger.warning(f"{self.stream_name} not connected for {log_name}."); return False
-        try: logger.info(f"{self.stream_name} sending command: '{method}' with args {args}"); await self.connection.send(method, args); return True
-        except Exception as e: logger.error(f"{self.stream_name} failed command '{log_name}': {e}"); await self._update_status(StreamConnectionStatus.ERROR, f"Sub failed for {method}"); await self.error_callback(self.stream_name, e); return False
+    def __init__(self, hub_url: str, initial_token: str, event_callback: InternalGenericEventCallback, 
+                 status_callback: InternalStatusChangeCallback, error_callback: InternalErrorCallback, stream_name: str):
+        self._raw_hub_url = hub_url
+        self._current_token = initial_token
+        self.event_callback = event_callback
+        self.status_callback = status_callback
+        self.error_callback = error_callback
+        self.stream_name = stream_name
+        self.connection: Optional[SignalRClient] = None
+        self.current_status = StreamConnectionStatus.DISCONNECTED
+        self._run_task: Optional[asyncio.Task] = None
+        self._is_manually_stopping = False
+        
+        logger.info(f"BaseTopStepXStream '{self.stream_name}' initialized for URL: {self._raw_hub_url}")
 
+    def _build_url_with_token(self) -> str:
+        base_url = f"wss://{self._raw_hub_url}" if not self._raw_hub_url.startswith("wss://") else self._raw_hub_url
+        return f"{base_url}?access_token={self._current_token}"
+
+    async def _update_status(self, new_status: StreamConnectionStatus, reason: Optional[str] = None):
+        if self.current_status != new_status:
+            old_status = self.current_status
+            self.current_status = new_status
+            logger.info(f"{self.stream_name} status: {old_status.value} -> {new_status.value} (Reason: {reason or 'N/A'})")
+            await self.status_callback(self.stream_name, new_status, reason)
+
+    async def _on_open_and_subscribe(self):
+        """Called when connection opens. Subscribes to pending items."""
+        await self._update_status(StreamConnectionStatus.CONNECTED, "SignalR connection established")
+        await self._send_pending_subscriptions()
+
+    async def _pysignalr_on_close(self):
+        reason = "Manual stop" if self._is_manually_stopping else "Connection closed by server"
+        status = StreamConnectionStatus.STOPPED if self._is_manually_stopping else StreamConnectionStatus.DISCONNECTED
+        await self._update_status(status, reason)
+
+    async def _pysignalr_on_error(self, err: Any):
+        exc = err if isinstance(err, Exception) else PySignalRConnectionError(str(err))
+        await self._update_status(StreamConnectionStatus.ERROR, f"SignalR error: {str(exc)[:100]}")
+        await self.error_callback(self.stream_name, exc)
+
+    async def connect_and_run_forever(self):
+        if self._run_task and not self._run_task.done():
+            logger.warning(f"{self.stream_name} is already running or connecting.")
+            return
+
+        self._is_manually_stopping = False
+        await self._update_status(StreamConnectionStatus.CONNECTING)
+
+        if not self._current_token:
+            err = AuthenticationError("Cannot start stream: token is missing.")
+            await self._update_status(StreamConnectionStatus.ERROR, err.args[0])
+            await self.error_callback(self.stream_name, err)
+            return
+
+        hub_url_with_token = self._build_url_with_token()
+        self.connection = SignalRClient(hub_url_with_token)
+        self.connection.on_open(self._on_open_and_subscribe)
+        self.connection.on_close(self._pysignalr_on_close)
+        self.connection.on_error(self._pysignalr_on_error)
+        self._register_specific_handlers()
+
+        try:
+            logger.info(f"{self.stream_name} starting run loop...")
+            self._run_task = asyncio.create_task(self.connection.run(), name=f"{self.stream_name}_Run")
+            await self._run_task
+        except asyncio.CancelledError:
+            logger.info(f"{self.stream_name} run task cancelled.")
+        except Exception as e:
+            await self._update_status(StreamConnectionStatus.ERROR, f"Run error: {type(e).__name__}")
+            await self.error_callback(self.stream_name, e)
+        finally:
+            self._run_task = None
+            if not self._is_manually_stopping:
+                await self._update_status(StreamConnectionStatus.DISCONNECTED, "Run loop finished unexpectedly")
+
+    async def disconnect(self):
+        if self.current_status == StreamConnectionStatus.DISCONNECTED or self._is_manually_stopping:
+            return
+        
+        self._is_manually_stopping = True
+        await self._update_status(StreamConnectionStatus.STOPPING, "Client requested disconnect")
+        
+        if self._run_task and not self._run_task.done():
+            self._run_task.cancel()
+        
+        if self.connection:
+            try:
+                await self.connection.stop()
+            except Exception as e:
+                logger.error(f"Error while stopping {self.stream_name} connection: {e}")
+
+        await self._update_status(StreamConnectionStatus.STOPPED, "Client disconnect complete")
+
+    def _register_specific_handlers(self): raise NotImplementedError
+    async def _send_pending_subscriptions(self): raise NotImplementedError
+
+    async def _invoke_subscription_command(self, method: str, args: List[Any], log_name: str) -> bool:
+        if self.current_status != StreamConnectionStatus.CONNECTED:
+            logger.warning(f"Cannot subscribe '{log_name}' on {self.stream_name}: not connected.")
+            return False
+        try:
+            logger.info(f"{self.stream_name} sending command: '{method}' with args {args}")
+            await self.connection.send(method, args)
+            return True
+        except Exception as e:
+            await self._update_status(StreamConnectionStatus.ERROR, f"Subscription failed for {method}")
+            await self.error_callback(self.stream_name, e)
+            return False
 
 class TopStepXMarketStreamInternal(_BaseTopStepXStream):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subscribed_contracts: Dict[str, List[MarketDataType]] = {}
-        self.mapper = None # Injected by provider
+        self.pending_subscriptions: Dict[str, Set[MarketDataType]] = {}
+        self.mapper = None
 
     def _register_specific_handlers(self):
         if not self.connection: return
@@ -79,77 +139,88 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
         self.connection.on("GatewayTrade", self._handle_ts_trade)
         self.connection.on("GatewayDepth", self._handle_ts_depth)
 
+    async def _send_pending_subscriptions(self):
+        for contract_id, data_types in self.pending_subscriptions.items():
+            if MarketDataType.QUOTE in data_types:
+                await self._invoke_subscription_command("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}")
+            if MarketDataType.DEPTH in data_types:
+                await self._invoke_subscription_command("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}")
+
     async def subscribe_contract(self, contract_id: str, data_types: List[MarketDataType]):
-        # Logic is correct, no changes needed
-        # ... (full implementation from previous response)
-        if not self._is_connected_signalr: self.subscribed_contracts[contract_id] = list(set(self.subscribed_contracts.get(contract_id, []) + data_types)); return
-        current_subs = self.subscribed_contracts.get(contract_id, [])
-        if MarketDataType.QUOTE in data_types and MarketDataType.QUOTE not in current_subs:
-            if await self._invoke_subscription("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}"): current_subs.append(MarketDataType.QUOTE)
-        if MarketDataType.TRADE in data_types: logger.info(f"{self.stream_name} listening for GatewayTrade on {contract_id} (no command sent).")
-        if MarketDataType.DEPTH in data_types and MarketDataType.DEPTH not in current_subs:
-            if await self._invoke_subscription("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}"): current_subs.append(MarketDataType.DEPTH)
-        self.subscribed_contracts[contract_id] = list(set(current_subs))
+        if contract_id not in self.pending_subscriptions:
+            self.pending_subscriptions[contract_id] = set()
+        self.pending_subscriptions[contract_id].update(data_types)
+        
+        if self.current_status == StreamConnectionStatus.CONNECTED:
+            await self._send_pending_subscriptions()
 
+    async def unsubscribe_contract(self, contract_id: str, data_types: List[MarketDataType]): pass
 
-    # --- Handlers that call the mapper ---
     async def _handle_ts_quote(self, args: List[Any]):
-        if self.mapper and len(args) == 2:
-            generic_event = self.mapper.map_ts_quote_to_generic_event(args[0], args[1], self.stream_name)
-            if generic_event: await self.event_callback(generic_event)
+        if self.mapper and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], dict):
+            event = self.mapper.map_ts_quote_to_generic_event(args[0], args[1], self.stream_name)
+            if event: await self.event_callback(event)
 
     async def _handle_ts_trade(self, args: List[Any]):
-        if self.mapper and len(args) == 2:
-            # Assuming payload is a list of trades
-            payload = args[1] if isinstance(args[1], list) else [args[1]]
-            for trade_data in payload:
-                if isinstance(trade_data, dict):
-                    generic_event = self.mapper.map_ts_market_trade_to_generic_event(args[0], trade_data, self.stream_name)
-                    if generic_event: await self.event_callback(generic_event)
+        if self.mapper and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], dict):
+            event = self.mapper.map_ts_market_trade_to_generic_event(args[0], args[1], self.stream_name)
+            if event: await self.event_callback(event)
 
     async def _handle_ts_depth(self, args: List[Any]):
-        if self.mapper and len(args) == 2 and isinstance(args[1], list):
-            generic_event = self.mapper.map_ts_depth_to_generic_event(args[0], args[1], self.stream_name)
-            if generic_event: await self.event_callback(generic_event)
-
+        if self.mapper and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], list):
+            event = self.mapper.map_ts_depth_to_generic_event(args[0], args[1], self.stream_name)
+            if event: await self.event_callback(event)
 
 class TopStepXUserStreamInternal(_BaseTopStepXStream):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subscribed_accounts: Dict[str, List[UserDataType]] = {}
-        self.subscribed_globally_accounts = False
+        self.pending_account_subscriptions: Dict[str, Set[UserDataType]] = {}
+        self.pending_global_subscription = False
         self.mapper = None
 
     def _register_specific_handlers(self):
         if not self.connection: return
-        self.connection.on("GatewayUserOrder", lambda args: asyncio.create_task(self._handle_ts_user_generic(args, "GatewayUserOrder", "map_ts_order_update_to_generic_event")))
-        self.connection.on("GatewayUserPosition", lambda args: asyncio.create_task(self._handle_ts_user_generic(args, "GatewayUserPosition", "map_ts_position_update_to_generic_event")))
-        self.connection.on("GatewayUserAccount", lambda args: asyncio.create_task(self._handle_ts_user_generic(args, "GatewayUserAccount", "map_ts_account_update_to_generic_event")))
-        self.connection.on("GatewayUserTrade", lambda args: asyncio.create_task(self._handle_ts_user_generic(args, "GatewayUserTrade", "map_ts_user_trade_to_generic_event")))
+        self.connection.on("GatewayUserOrder", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_order_update_to_generic_event")))
+        self.connection.on("GatewayUserPosition", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_position_update_to_generic_event")))
+        self.connection.on("GatewayUserAccount", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_account_update_to_generic_event")))
+        self.connection.on("GatewayUserTrade", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_user_trade_to_generic_event")))
+
+    async def _send_pending_subscriptions(self):
+        if self.pending_global_subscription:
+            await self._invoke_subscription_command("SubscribeAccounts", [], "Global Accounts")
+            self.pending_global_subscription = False
+
+        for acc_id_str, data_types in self.pending_account_subscriptions.items():
+            try: acc_id_int = int(acc_id_str)
+            except ValueError: continue
+            
+            if UserDataType.ORDER_UPDATE in data_types:
+                await self._invoke_subscription_command("SubscribeOrders", [acc_id_int], f"Orders for Acc {acc_id_int}")
+            if UserDataType.POSITION_UPDATE in data_types:
+                await self._invoke_subscription_command("SubscribePositions", [acc_id_int], f"Positions for Acc {acc_id_int}")
+            if UserDataType.USER_TRADE in data_types:
+                await self._invoke_subscription_command("SubscribeTrades", [acc_id_int], f"UserTrades for Acc {acc_id_int}")
+        self.pending_account_subscriptions.clear()
     
     async def subscribe_global_accounts(self):
-        if not self.subscribed_globally_accounts:
-            if await self._invoke_subscription("SubscribeAccounts", [], "Global Accounts"): self.subscribed_globally_accounts = True
+        self.pending_global_subscription = True
+        if self.current_status == StreamConnectionStatus.CONNECTED:
+            await self._send_pending_subscriptions()
     
     async def subscribe_account(self, account_id_str: str, data_types: List[UserDataType]):
-        # Logic is correct, no changes needed
-        # ... (full implementation from previous response)
-        try: acc_id_int = int(account_id_str)
-        except ValueError: logger.error(f"{self.stream_name} invalid account_id_str: {account_id_str}"); return
-        if not self._is_connected_signalr: self.subscribed_accounts[account_id_str] = list(set(self.subscribed_accounts.get(account_id_str, []) + data_types)); return
-        current_subs = self.subscribed_accounts.get(account_id_str, [])
-        if UserDataType.ORDER_UPDATE in data_types and UserDataType.ORDER_UPDATE not in current_subs:
-            if await self._invoke_subscription("SubscribeOrders", [acc_id_int], f"Orders for Acc {acc_id_int}"): current_subs.append(UserDataType.ORDER_UPDATE)
-        if UserDataType.POSITION_UPDATE in data_types and UserDataType.POSITION_UPDATE not in current_subs:
-            if await self._invoke_subscription("SubscribePositions", [acc_id_int], f"Positions for Acc {acc_id_int}"): current_subs.append(UserDataType.POSITION_UPDATE)
-        if UserDataType.USER_TRADE in data_types and UserDataType.USER_TRADE not in current_subs:
-            if await self._invoke_subscription("SubscribeTrades", [acc_id_int], f"UserTrades for Acc {acc_id_int}"): current_subs.append(UserDataType.USER_TRADE)
-        self.subscribed_accounts[account_id_str] = list(set(current_subs))
+        if account_id_str not in self.pending_account_subscriptions:
+            self.pending_account_subscriptions[account_id_str] = set()
+        self.pending_account_subscriptions[account_id_str].update(data_types)
+        
+        if self.current_status == StreamConnectionStatus.CONNECTED:
+            await self._send_pending_subscriptions()
+    
+    async def unsubscribe_account(self, account_id_str: str, data_types: List[UserDataType]): pass
+    async def unsubscribe_global_accounts(self): pass
 
-
-    async def _handle_ts_user_generic(self, args: List[Any], event_name: str, mapper_func_name: str):
+    async def _handle_generic_user_event(self, args: List[Any], mapper_func_name: str):
         if self.mapper and len(args) >= 1 and isinstance(args[0], dict):
             mapper_func = getattr(self.mapper, mapper_func_name, None)
             if mapper_func:
-                generic_event = mapper_func(args[0], self.stream_name)
-                if generic_event: await self.event_callback(generic_event)
+                event = mapper_func(args[0], self.stream_name)
+                if event: await self.event_callback(event)

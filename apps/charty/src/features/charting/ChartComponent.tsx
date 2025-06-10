@@ -1,68 +1,155 @@
-// src/features/charting/ChartComponent.tsx
-import React, { useRef, useLayoutEffect, useEffect } from 'react';
-import * as LightweightCharts from 'lightweight-charts';
-import { getMockHistoricalData, subscribeToRealtimeData, CandlestickData as MarketDataCandlestick } from './services/marketDataService';
-// Notifier and websocket service can remain for future use, but are not strictly needed for just rendering
-import { useNotifier } from '@/features/notifications/useNotifier';
-import { websocketService } from '../../services/websocketService';
+import React, { useRef, useEffect } from 'react';
+import {
+  createChart,
+  ColorType,
+  CrosshairMode,
+  IChartApi,
+  ISeriesApi,
+  Time,
+} from 'lightweight-charts';
+import {
+  getHistoricalData,
+  subscribeToRealtimeData,
+  CandlestickData as MarketDataCandlestick,
+} from './services/marketDataService';
+import { useTheme } from 'next-themes';
 
-// This component now has no props
-export const ChartComponent: React.FC = () => {
+interface ChartComponentProps {
+  symbol: string;
+  timeframe: string;
+}
+
+const getChartColors = (theme: string | undefined) => {
+  const isDarkMode = theme === 'dark';
+  return {
+    backgroundColor: 'transparent',
+    textColor: isDarkMode ? '#D1D5DB' : '#1F2937',
+    gridColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+    borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+    upColor: isDarkMode ? '#22c55e' : '#16a34a',
+    downColor: isDarkMode ? '#ef4444' : '#dc2626',
+  };
+};
+
+export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const seriesRef = useRef<LightweightCharts.ISeriesApi<'Candlestick'> | null>(null);
-  
-  // Real-time update logic can stay, as it's self-contained
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const { resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+    const colors = getChartColors(resolvedTheme);
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: colors.backgroundColor },
+        textColor: colors.textColor,
+        fontFamily: 'system-ui, sans-serif',
+      },
+      grid: {
+        vertLines: { color: colors.gridColor },
+        horzLines: { color: colors.gridColor },
+      },
+      rightPriceScale: {
+        borderColor: colors.borderColor,
+      },
+      timeScale: {
+        borderColor: colors.borderColor,
+        timeVisible: true,
+        // === FIX #1: INCREASE BAR SPACING FOR A WIDER APPEARANCE ===
+        barSpacing: 18,
+        rightOffset: 5, // A smaller offset to maximize space
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+      },
+    });
+    chartRef.current = chart;
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: colors.upColor,
+      downColor: colors.downColor,
+      borderVisible: false,
+      wickUpColor: colors.upColor,
+      wickDownColor: colors.downColor,
+    });
+    seriesRef.current = candlestickSeries;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        chart.applyOptions({ width, height });
+      }
+    });
+    resizeObserver.observe(chartContainerRef.current);
+    return () => {
+      resizeObserver.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const colors = getChartColors(resolvedTheme);
+    chartRef.current.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: colors.backgroundColor },
+        textColor: colors.textColor,
+      },
+      grid: {
+        vertLines: { color: colors.gridColor },
+        horzLines: { color: colors.gridColor },
+      },
+      rightPriceScale: { borderColor: colors.borderColor },
+      timeScale: { borderColor: colors.borderColor },
+    });
+    seriesRef.current?.applyOptions({
+      upColor: colors.upColor,
+      downColor: colors.downColor,
+      wickUpColor: colors.upColor,
+      wickDownColor: colors.downColor,
+    });
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    if (!seriesRef.current) return;
+    const abortController = new AbortController();
+    const { signal } = abortController;
+    seriesRef.current.setData([]);
+    getHistoricalData(symbol, timeframe, signal)
+      .then((initialData) => {
+        if (!signal.aborted && seriesRef.current && chartRef.current) {
+          seriesRef.current.setData(initialData);
+
+          // === FIX #2: MANUALLY SET THE VISIBLE RANGE INSTEAD OF `fitContent()` ===
+          // This prevents the chart from trying to show all data at once,
+          // giving our barSpacing option room to work.
+          if (initialData.length > 0) {
+            const from = initialData[Math.max(0, initialData.length - 150)].time; // Show last 150 bars
+            const to = initialData[initialData.length - 1].time;
+            chartRef.current.timeScale().setVisibleRange({ from, to });
+          }
+        }
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to fetch historical data:', error);
+        }
+      });
+    return () => {
+      abortController.abort();
+    };
+  }, [symbol, timeframe]);
+
   useEffect(() => {
     const handleRealtimeUpdate = (newTick: MarketDataCandlestick) => {
       if (seriesRef.current) {
         seriesRef.current.update(newTick);
       }
     };
-    const unsubscribe = subscribeToRealtimeData('/MES', handleRealtimeUpdate);
-    return () => { unsubscribe(); };
-  }, []);
+    const unsubscribe = subscribeToRealtimeData(symbol, handleRealtimeUpdate);
+    return () => unsubscribe();
+  }, [symbol]);
 
-  // Main chart creation logic
-  useLayoutEffect(() => {
-    if (!chartContainerRef.current) return;
-
-    const chart = LightweightCharts.createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight,
-      // We can disable the crosshair since there's no OHLC display
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Hidden,
-      },
-      layout: { background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' }, textColor: '#D1D5DB' },
-      grid: { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
-      timeScale: { borderColor: '#374151', timeVisible: true, rightOffset: 15 },
-      rightPriceScale: { borderColor: '#374151' },
-    });
-
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#22c55e',
-      downColor: '#ef4444',
-      borderVisible: true,
-      borderUpColor: '#4ade80',
-      borderDownColor: '#b91c1c',
-      wickUpColor: '#4ade80',
-      wickDownColor: '#b91c1c',
-    });
-    seriesRef.current = candlestickSeries;
-
-    const historicalData = getMockHistoricalData();
-    candlestickSeries.setData(historicalData);
-
-    const handleResize = () => chart.resize(chartContainerRef.current!.clientWidth, chartContainerRef.current!.clientHeight);
-    window.addEventListener('resize', handleResize);
-    chart.timeScale().fitContent();
-
-    return () => { 
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-      seriesRef.current = null; 
-    };
-  }, []);
-
-  return <div ref={chartContainerRef} className="w-full h-full min-h-[300px]" />;
+  return <div ref={chartContainerRef} className="w-full h-full" />;
 };

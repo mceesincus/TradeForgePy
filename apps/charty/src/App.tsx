@@ -1,42 +1,38 @@
 // src/App.tsx
+
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from 'sonner';
 import { ChartContainer } from './features/charting/ChartContainer';
-import { LeftToolbar } from './components/layout/LeftToolbar'; // Import the new toolbar
+import { LeftToolbar } from './components/layout/LeftToolbar';
+import { RightOrderPanel } from './components/layout/RightOrderPanel';
+import { ThemeProvider } from './components/shared/ThemeProvider';
 
 function App() {
   return (
-    <div className="flex flex-col h-screen antialiased bg-background text-foreground">
-      <Header />
-      {/* The main row now contains the LeftToolbar and the main content area */}
-      <div className="flex flex-grow overflow-hidden">
-        
-        {/* ADD THE NEW LEFT TOOLBAR */}
-        <LeftToolbar />
+    <ThemeProvider defaultTheme="dark" storageKey="trading-app-theme">
+      <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+        <Header />
+        <main className="flex-grow grid grid-cols-[auto_1fr_auto] overflow-hidden">
+          <LeftToolbar />
 
-        {/* This is the main content area for the charts */}
-        <div className="flex-grow flex flex-col">
-          <div className="flex-grow grid grid-cols-1 lg:grid-cols-10 gap-4 p-4">
-            <div className="lg:col-span-3">
-              <ChartContainer initialSymbol="/ES" initialTimeframe="30m" />
-            </div>
-            <div className="lg:col-span-3">
-              <ChartContainer initialSymbol="/NQ" initialTimeframe="15m" />
-            </div>
-            <div className="lg:col-span-4">
-              <ChartContainer initialSymbol="/RTY" initialTimeframe="5m" />
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-7 gap-2 p-2 overflow-hidden">
+            {/*
+              --- THE TIMEFRAME CHANGE ---
+              Each ChartContainer is now given a hardcoded timeframe prop
+              according to the new requirements.
+            */}
+            <ChartContainer className="lg:col-span-2" timeframe="60m" />
+            <ChartContainer className="lg:col-span-2" timeframe="15m" />
+            <ChartContainer className="lg:col-span-3" timeframe="5m" />
           </div>
-        </div>
 
-        {/* The RightOrderPanel is no longer here. Its content is rendered inside the Sheet,
-            which is triggered from the LeftToolbar. */}
-
+          <RightOrderPanel />
+        </main>
+        <Footer />
+        <Toaster richColors position="top-right" />
       </div>
-      <Footer />
-      <Toaster />
-    </div>
+    </ThemeProvider>
   );
 }
 

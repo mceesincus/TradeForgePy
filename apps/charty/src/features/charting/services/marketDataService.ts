@@ -6,18 +6,39 @@ export interface CandlestickData extends OhlcData {
   time: UTCTimestamp;
 }
 
-export const getMockHistoricalData = (): CandlestickData[] => {
+// ** THIS FUNCTION IS NOW MODIFIED TO BE TIMEFRAME-AWARE **
+export const getHistoricalData = async (symbol: string, timeframe: string): Promise<CandlestickData[]> => {
+  console.log(`Fetching historical data for ${symbol} on timeframe ${timeframe}... (using smart mock data)`);
+  
   const data: CandlestickData[] = [];
-  // Start 75 days ago
-  let time = (Math.floor(Date.now() / 1000) - 75 * 86400) as UTCTimestamp;
   let price = 5000;
+  
+  // --- Logic to determine how much data to generate ---
+  let daysToLoad = 20; // Default
+  let intervalInMinutes = 60; // Default
 
-  // Generate 75 mock candles
-  for (let i = 0; i < 75; i++) {
-    const open = price + (Math.random() - 0.5) * 10;
-    const close = open + (Math.random() - 0.5) * 20;
-    const high = Math.max(open, close) + Math.random() * 5;
-    const low = Math.min(open, close) - Math.random() * 5;
+  if (timeframe === '5m') {
+    daysToLoad = 3;
+    intervalInMinutes = 5;
+  } else if (timeframe === '15m') {
+    daysToLoad = 10;
+    intervalInMinutes = 15;
+  } else if (timeframe === '60m') {
+    daysToLoad = 20;
+    intervalInMinutes = 60;
+  }
+
+  const candlesPerDay = (24 * 60) / intervalInMinutes;
+  const totalCandles = Math.floor(candlesPerDay * daysToLoad);
+  const intervalInSeconds = intervalInMinutes * 60;
+  
+  let time = (Math.floor(Date.now() / 1000) - (totalCandles * intervalInSeconds)) as UTCTimestamp;
+  
+  for (let i = 0; i < totalCandles; i++) {
+    const open = price + (Math.random() - 0.5) * (intervalInMinutes / 5); // Fluctuation scales with timeframe
+    const close = open + (Math.random() - 0.5) * (intervalInMinutes / 2.5);
+    const high = Math.max(open, close) + Math.random() * (intervalInMinutes / 10);
+    const low = Math.min(open, close) - Math.random() * (intervalInMinutes / 10);
 
     data.push({
       time,
@@ -27,74 +48,52 @@ export const getMockHistoricalData = (): CandlestickData[] => {
       close: parseFloat(close.toFixed(2)),
     });
 
-    time = (time + 86400) as UTCTimestamp;
+    time = (time + intervalInSeconds) as UTCTimestamp;
     price = close;
   }
-  return data;
+  
+  console.log(`Generated ${totalCandles} mock candles for ${timeframe} timeframe.`);
+  return Promise.resolve(data);
 };
 
-let mockDataInterval: NodeJS.Timeout | null = null;
-let lastCandle: CandlestickData | null = null;
-
-const startMockDataStream = (callback: (data: CandlestickData) => void) => {
-  if (mockDataInterval) {
-    clearInterval(mockDataInterval);
-  }
-
-  if (!lastCandle) {
-    const historicalData = getMockHistoricalData();
-    lastCandle = historicalData[historicalData.length - 1];
-  }
-
-  mockDataInterval = setInterval(() => {
-    if (!lastCandle) return;
-
-    const lastClose = lastCandle.close;
-    const newClose = lastClose + (Math.random() - 0.49) * 2;
-    const newHigh = Math.max(lastCandle.high, newClose);
-    const newLow = Math.min(lastCandle.low, newClose);
-
-    const updatedCandle: CandlestickData = {
-      ...lastCandle,
-      high: parseFloat(newHigh.toFixed(2)),
-      low: parseFloat(newLow.toFixed(2)),
-      close: parseFloat(newClose.toFixed(2)),
-    };
-    
-    const isNewCandle = Math.random() > 0.95; 
-    if (isNewCandle) {
-        lastCandle = {
-            time: (lastCandle.time + 86400) as UTCTimestamp,
-            open: lastCandle.close,
-            close: lastCandle.close,
-            high: lastCandle.close,
-            low: lastCandle.close,
-        }
-    } else {
-        lastCandle = updatedCandle;
-    }
-    
-    callback(lastCandle);
-  }, 1000);
-};
-
-const stopMockDataStream = () => {
-  if (mockDataInterval) {
-    clearInterval(mockDataInterval);
-    mockDataInterval = null;
-    lastCandle = null;
-  }
-};
-
+// This function now subscribes to your live FastAPI WebSocket stream
 export const subscribeToRealtimeData = (
   symbol: string,
   callback: (data: CandlestickData) => void
 ) => {
-  console.log(`Subscribing to mock real-time data for ${symbol}`);
-  startMockDataStream(callback);
+  const WEBSOCKET_URL = "ws://127.0.0.1:8000/ws"; 
+  websocketService.connect(WEBSOCKET_URL);
+
+  const onOpen = () => {
+    console.log(`WebSocket connection open. Subscribing to market data for ${symbol}...`);
+    const subscriptionMessage = {
+      action: "subscribe_market_data",
+      params: { provider_contract_ids: [symbol], data_types: ["QUOTE"] }
+    };
+    websocketService.sendMessage(subscriptionMessage);
+  };
+
+  const unsubscribeFromOpen = websocketService.onOpen(onOpen);
+
+  const onMessage = (event: any) => {
+    if (event.event_type === 'quote' && event.symbol === symbol) {
+      const candle = event.data as CandlestickData;
+      if (candle && candle.time && candle.open) {
+          callback(candle);
+      }
+    }
+  };
+
+  const unsubscribeFromMessage = websocketService.onMessage(onMessage);
 
   return () => {
-    console.log(`Unsubscribing from mock real-time data for ${symbol}`);
-    stopMockDataStream();
+    console.log(`Unsubscribing from real-time data for ${symbol}`);
+    unsubscribeFromOpen();
+    unsubscribeFromMessage();
+    const unsubscribeMessage = {
+      action: "unsubscribe_market_data",
+      params: { provider_contract_ids: [symbol] }
+    };
+    websocketService.sendMessage(unsubscribeMessage);
   };
 };

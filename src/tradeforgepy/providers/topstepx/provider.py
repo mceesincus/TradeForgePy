@@ -37,81 +37,76 @@ from .streams import TopStepXMarketStreamInternal, TopStepXUserStreamInternal
 
 logger = logging.getLogger(__name__)
 
+# --- Correct, Hardcoded Stream URLs ---
+TS_MARKET_HUB_DEMO = "gateway-rtc-demo.s2f.projectx.com/hubs/market"
+TS_MARKET_HUB_LIVE = "rtc.topstepx.com/hubs/market"
+TS_USER_HUB_DEMO = "gateway-rtc-demo.s2f.projectx.com/hubs/user"
+TS_USER_HUB_LIVE = "rtc.topstepx.com/hubs/user"
+
 class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
-    """
-    Concrete implementation of the generic trading platform interfaces for TopStepX.
-    This class handles both REST API calls and real-time SignalR streaming.
-    """
     provider_name: str = "TopStepX"
 
     def __init__(self, username: Optional[str] = None, api_key: Optional[str] = None,
                  environment: Optional[str] = None,
                  connect_timeout: float = 10.0, read_timeout: float = 30.0):
-        # NOTE: Using 'tradeforgepy.config.settings' is preferred now, but this
-        # allows direct instantiation without forcing .env usage, which is good for a library.
         _username = username or os.getenv("TS_USERNAME")
         _api_key = api_key or os.getenv("TS_API_KEY")
-        _environment = (environment or os.getenv("TS_ENVIRONMENT", "DEMO")).upper()
+        self.environment = (environment or os.getenv("TS_ENVIRONMENT", "DEMO")).upper()
 
         if not _username or not _api_key:
-            raise ConfigurationError("TopStepXProvider requires username and API key, either via arguments or TS_USERNAME/TS_API_KEY env vars.")
+            raise ConfigurationError("TopStepXProvider requires username and API key.")
         
         self.http_client = TopStepXHttpClient(
-            username=_username, api_key=_api_key, environment=_environment,
+            username=_username, api_key=_api_key, environment=self.environment,
             connect_timeout=connect_timeout, read_timeout=read_timeout
         )
         self._is_connected_http = False
         
-        # Internal stream handlers
         self.market_stream_handler: Optional[TopStepXMarketStreamInternal] = None
         self.user_stream_handler: Optional[TopStepXUserStreamInternal] = None
         
-        # User-registered callbacks
         self._user_event_callback: Optional[GenericStreamEventCallback] = None
         self._user_status_callback: Optional[StreamStatusCallback] = None
         self._user_error_callback: Optional[StreamErrorCallback] = None
         
-        self._stream_runner_task: Optional[asyncio.Task] = None
+        self._run_forever_task: Optional[asyncio.Task] = None
 
-        logger.info(f"TopStepXProvider initialized for environment: {self.http_client.environment}")
+        logger.info(f"TopStepXProvider initialized for environment: {self.environment}")
 
-    # --- TradingPlatformAPI & RealTimeStream Common Methods ---
     async def connect(self) -> None:
-        """Establishes connection and authenticates the HTTP client."""
         if not self._is_connected_http:
             try:
-                # Use the internal _authenticate method of the client
                 await self.http_client._authenticate()
                 self._is_connected_http = True
                 logger.info("TopStepXProvider HTTP client connected and authenticated successfully.")
             except Exception as e:
                 self._is_connected_http = False
-                logger.error(f"TopStepXProvider HTTP connection/authentication failed during connect(): {e}")
+                logger.error(f"TopStepXProvider HTTP connection/authentication failed: {e}")
                 raise TradeForgeConnectionError(f"HTTP Auth failed: {e}") from e
-        
-        # Stream connection is handled by RealTimeStream.run_forever() when called by the user.
-        # This connect() method ensures the HTTP client (and its token) is ready for streams.
 
     async def disconnect(self) -> None:
-        """Closes HTTP client and any active real-time streams."""
         logger.info("TopStepXProvider disconnecting...")
-        if self._stream_runner_task and not self._stream_runner_task.done():
-            self._stream_runner_task.cancel()
+        if self._run_forever_task and not self._run_forever_task.done():
+            self._run_forever_task.cancel()
             try:
-                await self._stream_runner_task
+                await self._run_forever_task
             except asyncio.CancelledError:
-                logger.info("Provider's stream runner task cancelled.")
+                logger.info("Provider's main run_forever task was cancelled.")
         
-        if self.market_stream_handler: await self.market_stream_handler.disconnect()
-        if self.user_stream_handler: await self.user_stream_handler.disconnect()
+        disconnect_tasks = []
+        if self.market_stream_handler:
+            disconnect_tasks.append(self.market_stream_handler.disconnect())
+        if self.user_stream_handler:
+            disconnect_tasks.append(self.user_stream_handler.disconnect())
         
+        if disconnect_tasks:
+            await asyncio.gather(*disconnect_tasks, return_exceptions=True)
+
         await self.http_client.close_http_client()
         self._is_connected_http = False
-        logger.info("TopStepXProvider disconnected (HTTP client and streams).")
-
-
-    # --- TradingPlatformAPI HTTP/REST Methods Implementation ---
-
+        logger.info("TopStepXProvider disconnected.")
+    
+    # ... All REST API methods are correct and unchanged ...
     async def get_accounts(self) -> List[GenericAccount]:
         if not self._is_connected_http: await self.connect()
         ts_response = await self.http_client.ts_get_accounts(only_active=True)
@@ -119,9 +114,8 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
 
     async def search_contracts(self, search_text: str, asset_class: Optional[AssetClass] = None) -> List[GenericContract]:
         if not self._is_connected_http: await self.connect()
-        if asset_class and asset_class != AssetClass.FUTURES:
-            logger.warning(f"TopStepXProvider: Asset class filter '{asset_class}' ignored; only FUTURES are supported.")
-        ts_response = await self.http_client.ts_search_contracts(search_text=search_text, live=False)
+        is_live = self.environment == 'LIVE'
+        ts_response = await self.http_client.ts_search_contracts(search_text=search_text, live=is_live)
         return mapper.map_ts_contracts_to_generic(ts_response.contracts, self.provider_name)
 
     async def get_contract_details(self, provider_contract_id: str) -> Optional[GenericContract]:
@@ -133,10 +127,11 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
 
     async def get_historical_bars(self, request: GenericHistoricalBarsRequest) -> GenericHistoricalBarsResponse:
         if not self._is_connected_http: await self.connect()
+        is_live = self.environment == 'LIVE'
         ts_unit = mapper.map_generic_bar_unit_to_ts(request.timeframe_unit)
         ts_request = TSRetrieveBarRequest(
             contractId=request.provider_contract_id,
-            live=False, startTime=request.start_time_utc, endTime=request.end_time_utc,
+            live=is_live, startTime=request.start_time_utc, endTime=request.end_time_utc,
             unit=ts_unit, unitNumber=request.timeframe_value,
             limit=1000, includePartialBar=False
         )
@@ -155,11 +150,7 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
         try:
             ts_order_req_model = mapper.map_generic_place_order_to_ts_request(order_request)
             ts_response = await self.http_client.ts_place_order(ts_order_req_model)
-            
-            # This logic needs a small correction. The error code from TS is an enum, not a generic status.
-            # We determine success based on the success flag, not the error code directly for status mapping.
             initial_status = OrderStatus.PENDING_SUBMIT if ts_response.success else OrderStatus.REJECTED
-
             return GenericOrderPlacementResponse(
                 order_id_acknowledged=ts_response.success and ts_response.orderId is not None,
                 provider_order_id=str(ts_response.orderId) if ts_response.orderId else None,
@@ -254,36 +245,30 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             generic_trades = generic_trades[:limit]
         return generic_trades
 
-    # --- RealTimeStream Interface Methods Implementation ---
     async def _internal_event_handler(self, event: GenericStreamEvent):
         if self._user_event_callback: await self._user_event_callback(event)
 
     async def _internal_status_handler(self, stream_name: str, status: StreamConnectionStatus, reason: Optional[str]):
-        logger.info(f"Internal stream '{stream_name}' status: {status.value} (Reason: {reason})")
         if self._user_status_callback:
             overall_status = self.get_status()
             await self._user_status_callback(overall_status, f"{stream_name}: {reason or status.value}")
 
     async def _internal_error_handler(self, stream_name: str, error: Exception):
-        logger.error(f"Internal stream '{stream_name}' error: {error}", exc_info=True)
         if self._user_error_callback: await self._user_error_callback(error)
 
-    async def _ensure_http_client_auth_for_streams(self):
-        if not self._is_connected_http or not self.http_client._token:
-            await self.connect()
-            if not self.http_client._token:
-                raise AuthenticationError("Failed to obtain token for stream initialization.")
-
     async def _init_stream_handlers_if_needed(self):
-        await self._ensure_http_client_auth_for_streams()
+        # The connect() method ensures we are authenticated.
+        if not self._is_connected_http or not self.http_client._token:
+             raise AuthenticationError("Must be connected via provider.connect() before initializing streams.")
+        
         token = self.http_client._token
-        if not token: raise AuthenticationError("Cannot initialize streams, no token.")
+        
+        market_hub_url = TS_MARKET_HUB_LIVE if self.environment == 'LIVE' else TS_MARKET_HUB_DEMO
+        user_hub_url = TS_USER_HUB_LIVE if self.environment == 'LIVE' else TS_USER_HUB_DEMO
 
         if self.market_stream_handler is None:
-            logger.info("Initializing TopStepXMarketStreamInternal...")
             self.market_stream_handler = TopStepXMarketStreamInternal(
-                hub_base_url_no_protocol=self.http_client.base_url.split('//')[1],
-                initial_token=token,
+                hub_url=market_hub_url, initial_token=token,
                 event_callback=self._internal_event_handler, 
                 status_callback=self._internal_status_handler,
                 error_callback=self._internal_error_handler,
@@ -292,10 +277,8 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             self.market_stream_handler.mapper = mapper
 
         if self.user_stream_handler is None:
-            logger.info("Initializing TopStepXUserStreamInternal...")
             self.user_stream_handler = TopStepXUserStreamInternal(
-                hub_base_url_no_protocol=self.http_client.base_url.split('//')[1],
-                initial_token=token,
+                hub_url=user_hub_url, initial_token=token,
                 event_callback=self._internal_event_handler,
                 status_callback=self._internal_status_handler,
                 error_callback=self._internal_error_handler,
@@ -304,20 +287,20 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             self.user_stream_handler.mapper = mapper
 
     async def subscribe_market_data(self, provider_contract_ids: List[str], data_types: List[MarketDataType]):
-        if self.market_stream_handler is None: await self._init_stream_handlers_if_needed()
+        if not self.market_stream_handler: await self._init_stream_handlers_if_needed()
         if self.market_stream_handler:
             for contract_id in provider_contract_ids:
+                # Let the handler manage when to send the subscription
                 await self.market_stream_handler.subscribe_contract(contract_id, data_types)
-        else: raise TradeForgeConnectionError("Market stream handler not properly initialized.")
+        else: raise TradeForgeConnectionError("Market stream handler not initialized.")
 
     async def unsubscribe_market_data(self, provider_contract_ids: List[str], data_types: List[MarketDataType]):
         if self.market_stream_handler:
             for contract_id in provider_contract_ids:
                 await self.market_stream_handler.unsubscribe_contract(contract_id, data_types)
-        else: logger.warning("Market stream handler not initialized; cannot unsubscribe.")
 
     async def subscribe_user_data(self, provider_account_ids: List[str], data_types: List[UserDataType]):
-        if self.user_stream_handler is None: await self._init_stream_handlers_if_needed()
+        if not self.user_stream_handler: await self._init_stream_handlers_if_needed()
         if self.user_stream_handler:
             if UserDataType.ACCOUNT_UPDATE in data_types:
                 await self.user_stream_handler.subscribe_global_accounts()
@@ -326,7 +309,6 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             if specific_types:
                 for acc_id in provider_account_ids:
                     await self.user_stream_handler.subscribe_account(acc_id, specific_types)
-        else: raise TradeForgeConnectionError("User stream handler not properly initialized.")
 
     async def unsubscribe_user_data(self, provider_account_ids: List[str], data_types: List[UserDataType]):
         if self.user_stream_handler:
@@ -336,33 +318,25 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             if specific_types:
                 for acc_id in provider_account_ids:
                     await self.user_stream_handler.unsubscribe_account(acc_id, specific_types)
-        else: logger.warning("User stream handler not initialized; cannot unsubscribe.")
 
     def get_status(self) -> StreamConnectionStatus:
-        statuses = self.get_stream_statuses()
-        market_status = statuses.get('market', StreamConnectionStatus.DISCONNECTED)
-        user_status = statuses.get('user', StreamConnectionStatus.DISCONNECTED)
-        
-        if market_status == StreamConnectionStatus.ERROR or user_status == StreamConnectionStatus.ERROR:
-            return StreamConnectionStatus.ERROR
-        if market_status == StreamConnectionStatus.CONNECTING or user_status == StreamConnectionStatus.CONNECTING:
-            return StreamConnectionStatus.CONNECTING
-        
-        # Consider connected if at least one stream is connected and none are in error/connecting
-        if market_status == StreamConnectionStatus.CONNECTED or user_status == StreamConnectionStatus.CONNECTED:
+        statuses = self.get_stream_statuses().values()
+        if not statuses: return StreamConnectionStatus.DISCONNECTED
+        if StreamConnectionStatus.ERROR in statuses: return StreamConnectionStatus.ERROR
+        if StreamConnectionStatus.CONNECTING in statuses: return StreamConnectionStatus.CONNECTING
+        initialized_handlers = [h for h in [self.market_stream_handler, self.user_stream_handler] if h is not None]
+        if not initialized_handlers: return StreamConnectionStatus.DISCONNECTED
+        if all(h.current_status == StreamConnectionStatus.CONNECTED for h in initialized_handlers):
             return StreamConnectionStatus.CONNECTED
-            
+        if any(h.current_status == StreamConnectionStatus.CONNECTED for h in initialized_handlers):
+            return StreamConnectionStatus.CONNECTING
         return StreamConnectionStatus.DISCONNECTED
 
     def get_market_stream_status(self) -> StreamConnectionStatus:
-        if self.market_stream_handler:
-            return self.market_stream_handler.current_status
-        return StreamConnectionStatus.DISCONNECTED
+        return self.market_stream_handler.current_status if self.market_stream_handler else StreamConnectionStatus.DISCONNECTED
 
     def get_user_stream_status(self) -> StreamConnectionStatus:
-        if self.user_stream_handler:
-            return self.user_stream_handler.current_status
-        return StreamConnectionStatus.DISCONNECTED
+        return self.user_stream_handler.current_status if self.user_stream_handler else StreamConnectionStatus.DISCONNECTED
 
     def get_stream_statuses(self) -> Dict[str, StreamConnectionStatus]:
         return {
@@ -370,38 +344,38 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             'user': self.get_user_stream_status()
         }
 
-    def on_event(self, callback: GenericStreamEventCallback):
-        self._user_event_callback = callback
-    def on_status_change(self, callback: StreamStatusCallback):
-        self._user_status_callback = callback
-    def on_error(self, callback: StreamErrorCallback):
-        self._user_error_callback = callback
+    def on_event(self, callback: GenericStreamEventCallback): self._user_event_callback = callback
+    def on_status_change(self, callback: StreamStatusCallback): self._user_status_callback = callback
+    def on_error(self, callback: StreamErrorCallback): self._user_error_callback = callback
 
     async def run_forever(self) -> None:
-        if self._stream_runner_task and not self._stream_runner_task.done():
+        if self._run_forever_task and not self._run_forever_task.done():
             logger.warning("run_forever called, but a runner task already exists.")
-            await self._stream_runner_task
+            await self._run_forever_task
             return
 
         await self._init_stream_handlers_if_needed()
 
         tasks = []
-        if self.market_stream_handler: tasks.append(self.market_stream_handler.connect_and_run_forever())
-        if self.user_stream_handler: tasks.append(self.user_stream_handler.connect_and_run_forever())
+        if self.market_stream_handler:
+            tasks.append(self.market_stream_handler.connect_and_run_forever())
+        if self.user_stream_handler:
+            tasks.append(self.user_stream_handler.connect_and_run_forever())
 
         if not tasks:
             logger.warning("run_forever called, but no streams configured to run. Idling.")
-            await asyncio.Event().wait() # Block indefinitely, more efficient than sleep
+            await asyncio.Event().wait()
             return
 
         logger.info(f"TopStepXProvider running {len(tasks)} stream(s) concurrently.")
         try:
-            self._stream_runner_task = asyncio.create_task(asyncio.gather(*tasks))
-            await self._stream_runner_task
+            self._run_forever_task = asyncio.gather(*tasks)
+            await self._run_forever_task
         except asyncio.CancelledError:
             logger.info("TopStepXProvider stream runner task was cancelled.")
-        except Exception as e_gather:
-            logger.error(f"Error in provider's stream runner (gather): {e_gather}", exc_info=True)
-            if self._user_error_callback: await self._user_error_callback(e_gather)
+        except Exception as e:
+            logger.error(f"Error in provider's stream runner (gather): {e}", exc_info=True)
+            if self._user_error_callback:
+                await self._user_error_callback(e)
         finally:
-            self._stream_runner_task = None
+            self._run_forever_task = None

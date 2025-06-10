@@ -1,21 +1,25 @@
 // src/services/websocketService.ts
-
 type MessageCallback = (data: any) => void;
 type EventCallback = () => void;
 
 class WebSocketService {
   private socket: WebSocket | null = null;
-  private messageListeners: MessageCallback[] = [];
-  private openListeners: EventCallback[] = [];
-  private closeListeners: EventCallback[] = [];
-  private errorListeners: EventCallback[] = [];
+  private url: string = '';
+  private messageListeners: Set<MessageCallback> = new Set();
+  private openListeners: Set<EventCallback> = new Set();
+  private closeListeners: Set<EventCallback> = new Set();
 
   public connect(url: string) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      console.log('WebSocket is already connected.');
-      return;
+      if (this.url === url) {
+        console.log('WebSocket is already connected to this URL.');
+        return;
+      }
+      this.disconnect(); // Disconnect if URL is different
     }
+    this.url = url;
 
+    console.log(`Attempting to connect to WebSocket at ${url}...`);
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
@@ -34,7 +38,6 @@ class WebSocketService {
 
     this.socket.onerror = (error) => {
       console.error('WebSocket error:', error);
-      this.errorListeners.forEach(cb => cb());
     };
 
     this.socket.onclose = () => {
@@ -45,27 +48,27 @@ class WebSocketService {
   }
 
   public sendMessage(data: any) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(data));
     } else {
-      console.error('WebSocket is not connected.');
+      console.error('Cannot send message, WebSocket is not open.');
     }
   }
 
-  public onMessage(callback: MessageCallback) {
-    this.messageListeners.push(callback);
+  // These methods now return an unsubscribe function
+  public onMessage(callback: MessageCallback): () => void {
+    this.messageListeners.add(callback);
+    return () => this.messageListeners.delete(callback);
   }
 
-  public onOpen(callback: EventCallback) {
-    this.openListeners.push(callback);
+  public onOpen(callback: EventCallback): () => void {
+    this.openListeners.add(callback);
+    return () => this.openListeners.delete(callback);
   }
 
-  public onClose(callback: EventCallback) {
-    this.closeListeners.push(callback);
-  }
-
-  public onError(callback: EventCallback) {
-    this.errorListeners.push(callback);
+  public onClose(callback: EventCallback): () => void {
+    this.closeListeners.add(callback);
+    return () => this.closeListeners.delete(callback);
   }
 
   public disconnect() {
