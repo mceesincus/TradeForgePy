@@ -19,6 +19,10 @@ interface ChartComponentProps {
   timeframe: string;
 }
 
+// --- CONFIGURATION CONSTANTS ---
+const BARS_TO_SHOW = 150; // Controls the initial zoom level
+const RIGHT_SIDE_MARGIN_IN_BARS = 5; // Controls the empty space on the right
+
 const getChartColors = (theme: string | undefined) => {
   const isDarkMode = theme === 'dark';
   return {
@@ -56,9 +60,7 @@ export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
       timeScale: {
         borderColor: colors.borderColor,
         timeVisible: true,
-        // === FIX #1: INCREASE BAR SPACING FOR A WIDER APPEARANCE ===
         barSpacing: 18,
-        rightOffset: 5, // A smaller offset to maximize space
       },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -121,13 +123,16 @@ export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
         if (!signal.aborted && seriesRef.current && chartRef.current) {
           seriesRef.current.setData(initialData);
 
-          // === FIX #2: MANUALLY SET THE VISIBLE RANGE INSTEAD OF `fitContent()` ===
-          // This prevents the chart from trying to show all data at once,
-          // giving our barSpacing option room to work.
+          // === THE DEFINITIVE AND FINAL FIX ===
+          // Use `setVisibleLogicalRange` with a correctly calculated range
+          // to control both the zoom level AND the right-side margin.
           if (initialData.length > 0) {
-            const from = initialData[Math.max(0, initialData.length - 150)].time; // Show last 150 bars
-            const to = initialData[initialData.length - 1].time;
-            chartRef.current.timeScale().setVisibleRange({ from, to });
+            const lastIndex = initialData.length - 1;
+            const logicalRange = {
+              from: Math.max(0, lastIndex - BARS_TO_SHOW),
+              to: lastIndex + RIGHT_SIDE_MARGIN_IN_BARS,
+            };
+            chartRef.current.timeScale().setVisibleLogicalRange(logicalRange);
           }
         }
       })
