@@ -120,14 +120,10 @@ cython_debug/
 #.idea/
 #.vscode/
 
-
-# apps
+# Project-specific ignores
 apps/
 test_scripts/
 captured_data_logs/
-
-#misc
 run.bat
 openapi.json
 shortcomings.md
-.env
