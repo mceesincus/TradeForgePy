@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     TS_ENVIRONMENT: Literal["LIVE", "DEMO"] = "DEMO"
     TS_CAPTURE_CONTRACT_ID: str = "CON.F.US.NQ.M25"
     TS_CAPTURE_ACCOUNT_ID: Optional[str] = None
+    
+    # --- TopStepX URLs ---
+    # These can be overridden in the .env file for testing or if URLs change.
+    TS_API_URL_DEMO: str = "https://gateway-api-demo.s2f.projectx.com"
+    TS_API_URL_LIVE: str = "https://api.topstepx.com"
+    TS_MARKET_HUB_DEMO: str = "gateway-rtc-demo.s2f.projectx.com/hubs/market"
+    TS_MARKET_HUB_LIVE: str = "rtc.topstepx.com/hubs/market"
+    TS_USER_HUB_DEMO: str = "gateway-rtc-demo.s2f.projectx.com/hubs/user"
+    TS_USER_HUB_LIVE: str = "rtc.topstepx.com/hubs/user"
 
 
 # Create a singleton instance to be used throughout the application

@@ -23,11 +23,11 @@ from .schemas_ts import (
 )
 from tradeforgepy.exceptions import AuthenticationError, ConnectionError as TradeForgeConnectionError, OperationFailedError, InvalidParameterError, NotFoundError
 from tradeforgepy.utils.time_utils import UTC_TZ
+from tradeforgepy.config import settings
 
 logger = logging.getLogger(__name__)
 
-TS_API_URL_DEMO = "https://gateway-api-demo.s2f.projectx.com"
-TS_API_URL_LIVE = "https://api.topstepx.com"
+# Hardcoded URLs are removed from here. They are now managed in config.py.
 TS_TOKEN_LIFETIME_HOURS = 23.5
 TS_TOKEN_SAFETY_MARGIN_MINUTES = 30
 
@@ -44,7 +44,7 @@ class TopStepXHttpClient:
         self.username = username
         self.api_key = api_key
         self.environment = environment.upper()
-        self.base_url = TS_API_URL_DEMO if self.environment == "DEMO" else TS_API_URL_LIVE
+        self.base_url = settings.TS_API_URL_DEMO if self.environment == "DEMO" else settings.TS_API_URL_LIVE
         
         self.timeout_config = httpx.Timeout(connect_timeout, read=read_timeout)
         self.async_client = httpx.AsyncClient(timeout=self.timeout_config, follow_redirects=True)

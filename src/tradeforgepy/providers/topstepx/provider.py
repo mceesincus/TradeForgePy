@@ -39,11 +39,7 @@ from .streams import TopStepXMarketStreamInternal, TopStepXUserStreamInternal
 
 logger = logging.getLogger(__name__)
 
-# --- Correct, Hardcoded Stream URLs ---
-TS_MARKET_HUB_DEMO = "gateway-rtc-demo.s2f.projectx.com/hubs/market"
-TS_MARKET_HUB_LIVE = "rtc.topstepx.com/hubs/market"
-TS_USER_HUB_DEMO = "gateway-rtc-demo.s2f.projectx.com/hubs/user"
-TS_USER_HUB_LIVE = "rtc.topstepx.com/hubs/user"
+# Hardcoded Stream URLs are removed from here. They are now managed in config.py.
 
 class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
     provider_name: str = "TopStepX"
@@ -299,8 +295,11 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
         if not self._is_connected_http or not self.http_client._token:
              raise AuthenticationError("Must be connected via provider.connect() before initializing streams.")
         token = self.http_client._token
-        market_hub_url = TS_MARKET_HUB_LIVE if self.environment == 'LIVE' else TS_MARKET_HUB_DEMO
-        user_hub_url = TS_USER_HUB_LIVE if self.environment == 'LIVE' else TS_USER_HUB_DEMO
+        
+        # Get URLs from the settings object
+        market_hub_url = settings.TS_MARKET_HUB_LIVE if self.environment == 'LIVE' else settings.TS_MARKET_HUB_DEMO
+        user_hub_url = settings.TS_USER_HUB_LIVE if self.environment == 'LIVE' else settings.TS_USER_HUB_DEMO
+        
         if self.market_stream_handler is None:
             self.market_stream_handler = TopStepXMarketStreamInternal(hub_url=market_hub_url, initial_token=token, event_callback=self._internal_event_handler, status_callback=self._internal_status_handler, error_callback=self._internal_error_handler, stream_name="MarketStream")
             self.market_stream_handler.mapper = mapper
