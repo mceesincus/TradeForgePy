@@ -27,8 +27,12 @@ class _BaseTopStepXStream:
         self.stream_name = stream_name
         self.connection: Optional[SignalRClient] = None
         self.current_status = StreamConnectionStatus.DISCONNECTED
-        self._run_task: Optional[asyncio.Task] = None
+        self._session_task: Optional[asyncio.Task] = None
         self._is_manually_stopping = False
+
+        # --- Resilience Parameters ---
+        self._reconnect_delay_sec = 2.0
+        self._max_reconnect_delay_sec = 60.0
         
         logger.info(f"BaseTopStepXStream '{self.stream_name}' initialized for URL: {self._raw_hub_url}")
 
@@ -44,8 +48,10 @@ class _BaseTopStepXStream:
             await self.status_callback(self.stream_name, new_status, reason)
 
     async def _on_open_and_subscribe(self):
-        """Called when connection opens. Subscribes to pending items."""
         await self._update_status(StreamConnectionStatus.CONNECTED, "SignalR connection established")
+        # Reset reconnect delay on successful connection
+        self._reconnect_delay_sec = 2.0
+        logger.info(f"{self.stream_name} connection successful. Reconnect delay reset to {self._reconnect_delay_sec}s.")
         await self._send_pending_subscriptions()
 
     async def _pysignalr_on_close(self):
@@ -58,19 +64,49 @@ class _BaseTopStepXStream:
         await self._update_status(StreamConnectionStatus.ERROR, f"SignalR error: {str(exc)[:100]}")
         await self.error_callback(self.stream_name, exc)
 
-    async def connect_and_run_forever(self):
-        if self._run_task and not self._run_task.done():
-            logger.warning(f"{self.stream_name} is already running or connecting.")
-            return
-
+    async def run_forever(self):
+        """ The public, resilient entry point for running a stream connection. """
         self._is_manually_stopping = False
+        logger.info(f"'{self.stream_name}' starting resilient run loop...")
+
+        while not self._is_manually_stopping:
+            try:
+                # This will block until the connection session ends for any reason.
+                await self._run_single_session()
+
+                if self._is_manually_stopping:
+                    logger.info(f"'{self.stream_name}' resilient loop stopped manually.")
+                    break
+                
+                logger.warning(f"'{self.stream_name}' session ended. Attempting reconnect in {self._reconnect_delay_sec:.1f}s...")
+                await asyncio.sleep(self._reconnect_delay_sec)
+                
+                # Apply exponential backoff
+                self._reconnect_delay_sec = min(self._reconnect_delay_sec * 2, self._max_reconnect_delay_sec)
+            
+            except asyncio.CancelledError:
+                logger.info(f"'{self.stream_name}' resilient run task was cancelled.")
+                self._is_manually_stopping = True # Ensure loop terminates
+
+            except Exception as e:
+                logger.error(f"Critical error in '{self.stream_name}' resilient loop: {e}", exc_info=True)
+                self._is_manually_stopping = True # Stop on unknown critical errors
+                await self.error_callback(self.stream_name, e)
+
+
+    async def _run_single_session(self):
+        """ Manages a single connection attempt and its lifetime. """
+        if self._session_task and not self._session_task.done():
+            self._session_task.cancel()
+
         await self._update_status(StreamConnectionStatus.CONNECTING)
 
         if not self._current_token:
             err = AuthenticationError("Cannot start stream: token is missing.")
             await self._update_status(StreamConnectionStatus.ERROR, err.args[0])
             await self.error_callback(self.stream_name, err)
-            return
+            # Raise to allow the resilient loop to handle backoff
+            raise err
 
         hub_url_with_token = self._build_url_with_token()
         self.connection = SignalRClient(hub_url_with_token)
@@ -78,54 +114,48 @@ class _BaseTopStepXStream:
         self.connection.on_close(self._pysignalr_on_close)
         self.connection.on_error(self._pysignalr_on_error)
         self._register_specific_handlers()
-
+        
         try:
-            logger.info(f"{self.stream_name} starting run loop...")
-            self._run_task = asyncio.create_task(self.connection.run(), name=f"{self.stream_name}_Run")
-            await self._run_task
+            logger.info(f"'{self.stream_name}' starting new connection session...")
+            self._session_task = asyncio.create_task(self.connection.run(), name=f"{self.stream_name}_Session")
+            await self._session_task
         except asyncio.CancelledError:
-            logger.info(f"{self.stream_name} run task cancelled.")
+            logger.info(f"'{self.stream_name}' session task cancelled.")
         except Exception as e:
-            await self._update_status(StreamConnectionStatus.ERROR, f"Run error: {type(e).__name__}")
+            await self._update_status(StreamConnectionStatus.ERROR, f"Session run error: {type(e).__name__}")
             await self.error_callback(self.stream_name, e)
         finally:
-            self._run_task = None
+            self._session_task = None
             if not self._is_manually_stopping:
-                await self._update_status(StreamConnectionStatus.DISCONNECTED, "Run loop finished unexpectedly")
+                await self._update_status(StreamConnectionStatus.DISCONNECTED, "Session finished unexpectedly")
 
     async def disconnect(self):
-        if self.current_status == StreamConnectionStatus.DISCONNECTED or self._is_manually_stopping:
-            return
-        
+        if self._is_manually_stopping: return
         self._is_manually_stopping = True
         await self._update_status(StreamConnectionStatus.STOPPING, "Client requested disconnect")
+
+        if self._session_task and not self._session_task.done():
+            self._session_task.cancel()
         
-        if self._run_task and not self._run_task.done():
-            self._run_task.cancel()
-        
+        # Explicitly stop the connection if it exists
         if self.connection:
             try:
                 await self.connection.stop()
             except Exception as e:
-                logger.error(f"Error while stopping {self.stream_name} connection: {e}")
-
+                logger.warning(f"Exception during explicit connection stop for '{self.stream_name}': {e}")
+                
         await self._update_status(StreamConnectionStatus.STOPPED, "Client disconnect complete")
 
     def _register_specific_handlers(self): raise NotImplementedError
     async def _send_pending_subscriptions(self): raise NotImplementedError
 
     async def _invoke_subscription_command(self, method: str, args: List[Any], log_name: str) -> bool:
-        if self.current_status != StreamConnectionStatus.CONNECTED:
-            logger.warning(f"Cannot subscribe '{log_name}' on {self.stream_name}: not connected.")
-            return False
+        if self.current_status != StreamConnectionStatus.CONNECTED: logger.warning(f"Cannot subscribe '{log_name}' on {self.stream_name}: not connected."); return False
         try:
             logger.info(f"{self.stream_name} sending command: '{method}' with args {args}")
-            await self.connection.send(method, args)
-            return True
+            await self.connection.send(method, args); return True
         except Exception as e:
-            await self._update_status(StreamConnectionStatus.ERROR, f"Subscription failed for {method}")
-            await self.error_callback(self.stream_name, e)
-            return False
+            await self._update_status(StreamConnectionStatus.ERROR, f"Subscription failed for {method}"); await self.error_callback(self.stream_name, e); return False
 
 class TopStepXMarketStreamInternal(_BaseTopStepXStream):
     def __init__(self, *args, **kwargs):
@@ -141,18 +171,13 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
 
     async def _send_pending_subscriptions(self):
         for contract_id, data_types in self.pending_subscriptions.items():
-            if MarketDataType.QUOTE in data_types:
-                await self._invoke_subscription_command("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}")
-            if MarketDataType.DEPTH in data_types:
-                await self._invoke_subscription_command("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}")
+            if MarketDataType.QUOTE in data_types: await self._invoke_subscription_command("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}")
+            if MarketDataType.DEPTH in data_types: await self._invoke_subscription_command("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}")
 
     async def subscribe_contract(self, contract_id: str, data_types: List[MarketDataType]):
-        if contract_id not in self.pending_subscriptions:
-            self.pending_subscriptions[contract_id] = set()
-        self.pending_subscriptions[contract_id].update(data_types)
-        
-        if self.current_status == StreamConnectionStatus.CONNECTED:
-            await self._send_pending_subscriptions()
+        if contract_id not in self.pending_subscriptions: self.pending_subscriptions[contract_id] = set()
+        self.pending_subscriptions[contract_id].update(dt for dt in data_types if dt != MarketDataType.TRADE) # TRADE is implicit
+        if self.current_status == StreamConnectionStatus.CONNECTED: await self._send_pending_subscriptions()
 
     async def unsubscribe_contract(self, contract_id: str, data_types: List[MarketDataType]): pass
 
@@ -188,32 +213,28 @@ class TopStepXUserStreamInternal(_BaseTopStepXStream):
     async def _send_pending_subscriptions(self):
         if self.pending_global_subscription:
             await self._invoke_subscription_command("SubscribeAccounts", [], "Global Accounts")
-            self.pending_global_subscription = False
-
-        for acc_id_str, data_types in self.pending_account_subscriptions.items():
-            try: acc_id_int = int(acc_id_str)
-            except ValueError: continue
-            
-            if UserDataType.ORDER_UPDATE in data_types:
-                await self._invoke_subscription_command("SubscribeOrders", [acc_id_int], f"Orders for Acc {acc_id_int}")
-            if UserDataType.POSITION_UPDATE in data_types:
-                await self._invoke_subscription_command("SubscribePositions", [acc_id_int], f"Positions for Acc {acc_id_int}")
-            if UserDataType.USER_TRADE in data_types:
-                await self._invoke_subscription_command("SubscribeTrades", [acc_id_int], f"UserTrades for Acc {acc_id_int}")
-        self.pending_account_subscriptions.clear()
+        
+        # Make a copy of items to handle potential modifications during iteration
+        for acc_id_str, data_types in list(self.pending_account_subscriptions.items()):
+            try:
+                acc_id_int = int(acc_id_str)
+                # We do not remove items from the pending list here.
+                # This ensures that if the connection drops and reconnects,
+                # the resubscription will still have the necessary data to proceed.
+                if UserDataType.ORDER_UPDATE in data_types: await self._invoke_subscription_command("SubscribeOrders", [acc_id_int], f"Orders for Acc {acc_id_int}")
+                if UserDataType.POSITION_UPDATE in data_types: await self._invoke_subscription_command("SubscribePositions", [acc_id_int], f"Positions for Acc {acc_id_int}")
+                if UserDataType.USER_TRADE in data_types: await self._invoke_subscription_command("SubscribeTrades", [acc_id_int], f"UserTrades for Acc {acc_id_int}")
+            except ValueError:
+                continue
     
     async def subscribe_global_accounts(self):
         self.pending_global_subscription = True
-        if self.current_status == StreamConnectionStatus.CONNECTED:
-            await self._send_pending_subscriptions()
+        if self.current_status == StreamConnectionStatus.CONNECTED: await self._send_pending_subscriptions()
     
     async def subscribe_account(self, account_id_str: str, data_types: List[UserDataType]):
-        if account_id_str not in self.pending_account_subscriptions:
-            self.pending_account_subscriptions[account_id_str] = set()
+        if account_id_str not in self.pending_account_subscriptions: self.pending_account_subscriptions[account_id_str] = set()
         self.pending_account_subscriptions[account_id_str].update(data_types)
-        
-        if self.current_status == StreamConnectionStatus.CONNECTED:
-            await self._send_pending_subscriptions()
+        if self.current_status == StreamConnectionStatus.CONNECTED: await self._send_pending_subscriptions()
     
     async def unsubscribe_account(self, account_id_str: str, data_types: List[UserDataType]): pass
     async def unsubscribe_global_accounts(self): pass

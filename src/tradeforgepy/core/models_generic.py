@@ -95,7 +95,7 @@ class Order(GenericBaseModel):
     _ensure_order_datetimes_utc = field_validator('created_at_utc', 'updated_at_utc', mode='before')(ensure_utc)
 
 
-class PlaceOrderRequest(BaseModel): # This is a request model, not generic data
+class PlaceOrderRequest(BaseModel):
     provider_account_id: str
     provider_contract_id: str
     order_type: OrderType
@@ -105,11 +105,13 @@ class PlaceOrderRequest(BaseModel): # This is a request model, not generic data
     stop_price: Optional[float] = Field(None, gt=0)
     time_in_force: OrderTimeInForce = OrderTimeInForce.DAY
     client_order_id: Optional[str] = None
+    # The 'linked_provider_order_id' field has been removed. The underlying provider API for
+    # bracket/OCO orders was found to be unreliable, creating unacceptable risk.
 
 class OrderPlacementResponse(GenericBaseModel):
     order_id_acknowledged: bool
     provider_order_id: Optional[str] = None
-    initial_order_status: Optional[OrderStatus] = Field(None, alias="order_status") # For initial status if known
+    initial_order_status: Optional[OrderStatus] = Field(None, alias="order_status")
     message: Optional[str] = None
 
 class ModifyOrderRequest(BaseModel):
@@ -118,11 +120,10 @@ class ModifyOrderRequest(BaseModel):
     new_size: Optional[float] = Field(None, gt=0)
     new_limit_price: Optional[float] = Field(None, gt=0)
     new_stop_price: Optional[float] = Field(None, gt=0)
-    # client_order_id: Optional[str] = None # If provider supports modifying this
 
 class GenericModificationResponse(GenericBaseModel):
     success: bool
-    provider_order_id: Optional[str] = None # Usually the same, but some might assign new
+    provider_order_id: Optional[str] = None
     message: Optional[str] = None
 
 class GenericCancellationResponse(GenericBaseModel):
@@ -132,24 +133,21 @@ class GenericCancellationResponse(GenericBaseModel):
 class Position(GenericBaseModel):
     provider_account_id: str
     provider_contract_id: str
-    quantity: float # Positive for long, negative for short
+    quantity: float
     average_entry_price: Optional[float] = None
     unrealized_pnl: Optional[float] = None
-    # last_trade_price: Optional[float] = None
-    # market_value: Optional[float] = None
 
 class Trade(GenericBaseModel):
-    provider_trade_id: str # Provider's unique ID for this specific fill/execution
-    provider_order_id: Optional[str] = None # Order that generated this trade
+    provider_trade_id: str
+    provider_order_id: Optional[str] = None
     provider_account_id: str
     provider_contract_id: str
     price: float
-    quantity: float # Always positive quantity for this specific fill
-    side: OrderSide # Side of THIS specific trade execution
+    quantity: float
+    side: OrderSide
     timestamp_utc: datetime
     commission: Optional[float] = None
-    # liquidity_indicator: Optional[str] = None # e.g., MAKER, TAKER
-    pnl: Optional[float] = None # P&L realized by this specific trade if it closed/reduced a position
+    pnl: Optional[float] = None
 
     _ensure_trade_dt_utc = field_validator('timestamp_utc', mode='before')(ensure_utc)
 
@@ -163,43 +161,43 @@ class GenericStreamEvent(GenericBaseModel):
     _ensure_event_dt_utc = field_validator('timestamp_event_utc', mode='before')(ensure_utc)
 
 class QuoteEvent(GenericStreamEvent):
-    event_type: typing_Literal[MarketDataType.QUOTE] = MarketDataType.QUOTE # Use the renamed Literal
+    event_type: typing_Literal[MarketDataType.QUOTE] = MarketDataType.QUOTE
     bid_price: Optional[float] = None
     bid_size: Optional[float] = None
     ask_price: Optional[float] = None
     ask_size: Optional[float] = None
-    last_price: Optional[float] = None # Some providers include last trade in quote
+    last_price: Optional[float] = None
     last_size: Optional[float] = None
 
-class MarketTradeEvent(GenericStreamEvent): # Different from UserTrade event
+class MarketTradeEvent(GenericStreamEvent):
     event_type: typing_Literal[MarketDataType.TRADE] = MarketDataType.TRADE
     price: float
     size: float
     aggressor_side: Optional[OrderSide] = None
 
-class DepthLevel(BaseModel): # Not GenericBaseModel as it's a sub-component
+class DepthLevel(BaseModel):
     price: float
     size: float
-    side: OrderSide # Is this level a bid or an ask
+    side: OrderSide
 
 class DepthSnapshotEvent(GenericStreamEvent):
     event_type: typing_Literal[MarketDataType.DEPTH] = MarketDataType.DEPTH
     bids: List[DepthLevel] = Field(default_factory=list)
     asks: List[DepthLevel] = Field(default_factory=list)
-    is_snapshot: bool = True # To differentiate from incremental updates if supported
+    is_snapshot: bool = True
 
 class OrderUpdateEvent(GenericStreamEvent):
     event_type: typing_Literal[UserDataType.ORDER_UPDATE] = UserDataType.ORDER_UPDATE
-    order_data: Order # The full generic Order model
+    order_data: Order
 
 class PositionUpdateEvent(GenericStreamEvent):
     event_type: typing_Literal[UserDataType.POSITION_UPDATE] = UserDataType.POSITION_UPDATE
-    position_data: Position # The full generic Position model
+    position_data: Position
 
-class UserTradeEvent(GenericStreamEvent): # Fill for user
+class UserTradeEvent(GenericStreamEvent):
     event_type: typing_Literal[UserDataType.USER_TRADE] = UserDataType.USER_TRADE
-    trade_data: Trade # The full generic Trade model
+    trade_data: Trade
 
 class AccountUpdateEvent(GenericStreamEvent):
     event_type: typing_Literal[UserDataType.ACCOUNT_UPDATE] = UserDataType.ACCOUNT_UPDATE
-    account_data: Account # The full generic Account model
+    account_data: Account

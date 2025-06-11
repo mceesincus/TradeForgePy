@@ -57,7 +57,7 @@ class TradingPlatformAPI(ABC):
 
     @abstractmethod
     async def modify_order(self, modify_request: ModifyOrderRequest) -> GenericModificationResponse:
-        pass # modify_request itself is a generic Pydantic model now
+        pass
 
     @abstractmethod
     async def get_order_by_id(self, provider_account_id: str, provider_order_id: str) -> Optional[Order]:
@@ -65,6 +65,18 @@ class TradingPlatformAPI(ABC):
 
     @abstractmethod
     async def get_open_orders(self, provider_account_id: str, provider_contract_id: Optional[str] = None) -> List[Order]:
+        pass
+    
+    @abstractmethod
+    async def get_order_history(self,
+                                provider_account_id: str,
+                                start_time_utc: datetime,
+                                end_time_utc: datetime,
+                                provider_contract_id: Optional[str] = None
+                               ) -> List[Order]:
+        """
+        Retrieves all orders (open, filled, cancelled, etc.) for an account within a given time range.
+        """
         pass
 
     @abstractmethod

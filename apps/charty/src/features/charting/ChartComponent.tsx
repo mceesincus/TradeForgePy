@@ -13,27 +13,18 @@ import {
   CandlestickData as MarketDataCandlestick,
 } from './services/marketDataService';
 import { useTheme } from 'next-themes';
+// === STEP 1: IMPORT THE NEW ZUSTAND STORE ===
+import { useChartSettingsStore } from '@/store/chartSettingsStore';
 
 interface ChartComponentProps {
   symbol: string;
   timeframe: string;
 }
 
-// --- CONFIGURATION CONSTANTS ---
-const BARS_TO_SHOW = 150; // Controls the initial zoom level
-const RIGHT_SIDE_MARGIN_IN_BARS = 5; // Controls the empty space on the right
+const BARS_TO_SHOW = 150;
+const RIGHT_SIDE_MARGIN_IN_BARS = 5;
 
-const getChartColors = (theme: string | undefined) => {
-  const isDarkMode = theme === 'dark';
-  return {
-    backgroundColor: 'transparent',
-    textColor: isDarkMode ? '#D1D5DB' : '#1F2937',
-    gridColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-    borderColor: isDarkMode ? '#374151' : '#E5E7EB',
-    upColor: isDarkMode ? '#22c55e' : '#16a34a',
-    downColor: isDarkMode ? '#ef4444' : '#dc2626',
-  };
-};
+// The local `getChartColors` function is now REMOVED.
 
 export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -41,40 +32,62 @@ export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const { resolvedTheme } = useTheme();
 
+  // === STEP 2: GET ALL SETTINGS FROM THE ZUSTAND STORE ===
+  const chartSettings = useChartSettingsStore((state) => state);
+
+  // This effect creates the chart once and applies initial settings from the store.
   useEffect(() => {
     if (!chartContainerRef.current) return;
-    const colors = getChartColors(resolvedTheme);
+
+    // Theming for elements not covered by the settings store
+    const isDarkMode = resolvedTheme === 'dark';
+    const staticColors = {
+      backgroundColor: 'transparent',
+      textColor: isDarkMode ? '#D1D5DB' : '#1F2937',
+      gridColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+      crosshairLabelColor: isDarkMode ? '#334155' : '#e2e8f0',
+    };
+
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: colors.backgroundColor },
-        textColor: colors.textColor,
+        background: { type: ColorType.Solid, color: staticColors.backgroundColor },
+        textColor: staticColors.textColor,
         fontFamily: 'system-ui, sans-serif',
       },
       grid: {
-        vertLines: { color: colors.gridColor },
-        horzLines: { color: colors.gridColor },
+        vertLines: { color: staticColors.gridColor },
+        horzLines: { color: staticColors.gridColor },
       },
       rightPriceScale: {
-        borderColor: colors.borderColor,
+        borderColor: staticColors.borderColor,
       },
       timeScale: {
-        borderColor: colors.borderColor,
+        borderColor: staticColors.borderColor,
         timeVisible: true,
-        barSpacing: 18,
+        // Bar spacing is now read from the store
+        barSpacing: chartSettings.barSpacing,
       },
       crosshair: {
         mode: CrosshairMode.Normal,
+        vertLine: { labelBackgroundColor: staticColors.crosshairLabelColor },
+        horzLine: { labelBackgroundColor: staticColors.crosshairLabelColor },
       },
     });
     chartRef.current = chart;
+
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: colors.upColor,
-      downColor: colors.downColor,
-      borderVisible: false,
-      wickUpColor: colors.upColor,
-      wickDownColor: colors.downColor,
+      // All candle colors are now read directly from the store
+      upColor: chartSettings.upColor,
+      downColor: chartSettings.downColor,
+      borderUpColor: chartSettings.borderUpColor,
+      borderDownColor: chartSettings.borderDownColor,
+      wickUpColor: chartSettings.wickUpColor,
+      wickDownColor: chartSettings.wickDownColor,
+      borderVisible: true,
     });
     seriesRef.current = candlestickSeries;
+
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -82,37 +95,60 @@ export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
       }
     });
     resizeObserver.observe(chartContainerRef.current);
+
     return () => {
       resizeObserver.disconnect();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, []);
+  }, []); // This effect runs only once on mount.
 
+  // === STEP 3: CREATE A NEW EFFECT TO DYNAMICALLY UPDATE SETTINGS ===
+  // This effect watches for any changes in our settings store and applies them.
+  useEffect(() => {
+    if (!chartRef.current || !seriesRef.current) return;
+
+    // Apply bar spacing change to the time scale
+    chartRef.current.timeScale().applyOptions({
+      barSpacing: chartSettings.barSpacing,
+    });
+
+    // Apply all color changes to the candlestick series
+    seriesRef.current.applyOptions({
+      upColor: chartSettings.upColor,
+      downColor: chartSettings.downColor,
+      borderUpColor: chartSettings.borderUpColor,
+      borderDownColor: chartSettings.borderDownColor,
+      wickUpColor: chartSettings.wickUpColor,
+      wickDownColor: chartSettings.wickDownColor,
+    });
+  }, [chartSettings]); // The dependency array watches the entire settings object.
+
+  // This effect handles theme changes for elements not in the settings store.
   useEffect(() => {
     if (!chartRef.current) return;
-    const colors = getChartColors(resolvedTheme);
+    const isDarkMode = resolvedTheme === 'dark';
+    const staticColors = {
+      textColor: isDarkMode ? '#D1D5DB' : '#1F2937',
+      gridColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+      crosshairLabelColor: isDarkMode ? '#334155' : '#e2e8f0',
+    };
     chartRef.current.applyOptions({
-      layout: {
-        background: { type: ColorType.Solid, color: colors.backgroundColor },
-        textColor: colors.textColor,
+      layout: { textColor: staticColors.textColor },
+      grid: { vertLines: { color: staticColors.gridColor }, horzLines: { color: staticColors.gridColor } },
+      rightPriceScale: { borderColor: staticColors.borderColor },
+      timeScale: { borderColor: staticColors.borderColor },
+      crosshair: {
+        vertLine: { labelBackgroundColor: staticColors.crosshairLabelColor },
+        horzLine: { labelBackgroundColor: staticColors.crosshairLabelColor },
       },
-      grid: {
-        vertLines: { color: colors.gridColor },
-        horzLines: { color: colors.gridColor },
-      },
-      rightPriceScale: { borderColor: colors.borderColor },
-      timeScale: { borderColor: colors.borderColor },
-    });
-    seriesRef.current?.applyOptions({
-      upColor: colors.upColor,
-      downColor: colors.downColor,
-      wickUpColor: colors.upColor,
-      wickDownColor: colors.downColor,
     });
   }, [resolvedTheme]);
 
+
+  // Data loading and realtime update effects remain unchanged.
   useEffect(() => {
     if (!seriesRef.current) return;
     const abortController = new AbortController();
@@ -122,10 +158,6 @@ export const ChartComponent = ({ symbol, timeframe }: ChartComponentProps) => {
       .then((initialData) => {
         if (!signal.aborted && seriesRef.current && chartRef.current) {
           seriesRef.current.setData(initialData);
-
-          // === THE DEFINITIVE AND FINAL FIX ===
-          // Use `setVisibleLogicalRange` with a correctly calculated range
-          // to control both the zoom level AND the right-side margin.
           if (initialData.length > 0) {
             const lastIndex = initialData.length - 1;
             const logicalRange = {

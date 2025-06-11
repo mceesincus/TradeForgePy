@@ -1,6 +1,7 @@
-// src/components/layout/LeftToolbar.tsx (Recommended Refactor)
+// src/components/layout/LeftToolbar.tsx
+
 import React from 'react';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   BarChart,
   Settings,
@@ -8,40 +9,44 @@ import {
   GitPullRequestArrow,
   TrendingUp,
   SlidersHorizontal,
-} from "lucide-react";
+} from 'lucide-react';
 
-export const LeftToolbar = () => { // Removed React.FC for consistency with modern practice
-  // All inline styles and objects have been removed.
-  // Styling is now 100% handled by Tailwind utility classes.
+// Define the styles as objects to ensure consistency.
+// This bypasses the broken Tailwind build process entirely.
+const buttonStyle: React.CSSProperties = {
+  height: '56px',
+  width: '56px',
+};
 
+const iconStyle: React.CSSProperties = {
+  height: '36px',
+  width: '36px',
+};
+
+export const LeftToolbar = () => {
   return (
-    // Use Tailwind's 'w-16' class for 64px width.
-    <aside
-      className="w-16 bg-background border-r flex flex-col items-center py-4 gap-2 shrink-0"
-    >
+    <aside className="w-16 bg-background border-r flex flex-col items-center py-4 gap-2 shrink-0">
       <div className="flex flex-col gap-2">
-        {/* Use Tailwind classes for sizing: w-14 (56px) and h-14 (56px) */}
-        {/* The 'lucide' icons can be sized directly with classes as well. */}
-        <Button variant="ghost" size="icon" className="w-14 h-14">
-          <BarChart className="w-8 h-8" />
+        <Button variant="ghost" style={buttonStyle}>
+          <BarChart style={iconStyle} />
         </Button>
-        <Button variant="ghost" size="icon" className="w-14 h-14 text-muted-foreground">
-          <GitPullRequestArrow className="w-8 h-8" />
+        <Button variant="ghost" style={buttonStyle} className="text-muted-foreground">
+          <GitPullRequestArrow style={iconStyle} />
         </Button>
-        <Button variant="ghost" size="icon" className="w-14 h-14 text-muted-foreground">
-          <TrendingUp className="w-8 h-8" />
+        <Button variant="ghost" style={buttonStyle} className="text-muted-foreground">
+          <TrendingUp style={iconStyle} />
         </Button>
-        <Button variant="ghost" size="icon" className="w-14 h-14 text-muted-foreground">
-          <SlidersHorizontal className="w-8 h-8" />
+        <Button variant="ghost" style={buttonStyle} className="text-muted-foreground">
+          <SlidersHorizontal style={iconStyle} />
         </Button>
       </div>
 
       <div className="mt-auto flex flex-col gap-2">
-        <Button variant="ghost" size="icon" className="w-14 h-14 text-muted-foreground">
-          <Settings className="w-8 h-8" />
+        <Button variant="ghost" style={buttonStyle} className="text-muted-foreground">
+          <Settings style={iconStyle} />
         </Button>
-        <Button variant="ghost" size="icon" className="w-14 h-14 text-muted-foreground">
-          <HelpCircle className="w-8 h-8" />
+        <Button variant="ghost" style={buttonStyle} className="text-muted-foreground">
+          <HelpCircle style={iconStyle} />
         </Button>
       </div>
     </aside>

@@ -1,0 +1,551 @@
+2025-06-10 18:44:03,996 - fastapi_service.app.main - INFO - Application starting up...
+2025-06-10 18:44:03,996 - fastapi_service.app.dependencies - INFO - Initializing singleton TopStepXProvider instance (Attempt 1/5)...
+2025-06-10 18:44:04,034 - tradeforgepy.providers.topstepx.client - INFO - TopStepXHttpClient initialized for LIVE environment. User: cay7man
+2025-06-10 18:44:04,034 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider initialized for environment: LIVE
+2025-06-10 18:44:04,034 - tradeforgepy.providers.topstepx.client - INFO - Authenticating TopStepX user: cay7man
+2025-06-10 18:44:04,438 - httpx - INFO - HTTP Request: POST https://api.topstepx.com/api/Auth/loginKey "HTTP/1.1 200 OK"
+2025-06-10 18:44:04,439 - tradeforgepy.providers.topstepx.client - INFO - TopStepX auth successful.
+2025-06-10 18:44:04,439 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider HTTP client connected and authenticated successfully.
+2025-06-10 18:44:04,439 - fastapi_service.app.dependencies - INFO - Temporarily subscribing to CON.F.US.EP.M25 for data capture...
+2025-06-10 18:44:04,440 - tradeforgepy.providers.topstepx.streams - INFO - BaseTopStepXStream 'MarketStream' initialized for URL: rtc.topstepx.com/hubs/market
+2025-06-10 18:44:04,440 - tradeforgepy.providers.topstepx.streams - INFO - BaseTopStepXStream 'UserStream' initialized for URL: rtc.topstepx.com/hubs/user
+2025-06-10 18:44:04,441 - fastapi_service.app.dependencies - INFO - TopStepXProvider initialized and connected successfully.
+2025-06-10 18:44:04,441 - fastapi_service.app.main - INFO - Trading provider successfully initialized during startup.
+2025-06-10 18:44:04,441 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider running 2 stream(s) concurrently.
+2025-06-10 18:44:04,441 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream status: DISCONNECTED -> CONNECTING (Reason: N/A)
+2025-06-10 18:44:04,442 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream starting run loop...
+2025-06-10 18:44:04,442 - tradeforgepy.providers.topstepx.streams - INFO - UserStream status: DISCONNECTED -> CONNECTING (Reason: N/A)
+2025-06-10 18:44:04,442 - tradeforgepy.providers.topstepx.streams - INFO - UserStream starting run loop...
+2025-06-10 18:44:04,442 - pysignalr.transport - INFO - State change: disconnected -> connecting
+2025-06-10 18:44:04,442 - pysignalr.transport - INFO - Performing negotiation, URL: `https://rtc.topstepx.com/hubs/market/negotiate?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEyNjcxNiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6ImEyZWI1NjY1LThjOTItNGU2YS1iZDA3LTVhMTU0NjNiZGY4MiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJjYXk3bWFuIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoidXNlciIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvYXV0aGVudGljYXRpb25tZXRob2QiOiJhcGkta2V5IiwibXNkIjoiQ01FR1JPVVBfVE9CIiwibWZhIjoidmVyaWZpZWQiLCJleHAiOjE3NDk2OTI2NDR9.Ugu7bwj-pM1EqLh_EYTUK7OSGjdO8ka5FmMssg5guWs`
+2025-06-10 18:44:04,443 - pysignalr.transport - INFO - State change: disconnected -> connecting
+2025-06-10 18:44:04,443 - pysignalr.transport - INFO - Performing negotiation, URL: `https://rtc.topstepx.com/hubs/user/negotiate?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEyNjcxNiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6ImEyZWI1NjY1LThjOTItNGU2YS1iZDA3LTVhMTU0NjNiZGY4MiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJjYXk3bWFuIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoidXNlciIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvYXV0aGVudGljYXRpb25tZXRob2QiOiJhcGkta2V5IiwibXNkIjoiQ01FR1JPVVBfVE9CIiwibWZhIjoidmVyaWZpZWQiLCJleHAiOjE3NDk2OTI2NDR9.Ugu7bwj-pM1EqLh_EYTUK7OSGjdO8ka5FmMssg5guWs`
+2025-06-10 18:44:04,903 - pysignalr.transport - INFO - Negotiation completed
+2025-06-10 18:44:04,935 - pysignalr.transport - INFO - Negotiation completed
+2025-06-10 18:44:05,223 - pysignalr.transport - INFO - Sending handshake to server
+2025-06-10 18:44:05,224 - pysignalr.transport - INFO - Awaiting handshake from server
+2025-06-10 18:44:05,251 - pysignalr.transport - INFO - Sending handshake to server
+2025-06-10 18:44:05,252 - pysignalr.transport - INFO - Awaiting handshake from server
+2025-06-10 18:44:05,303 - pysignalr.transport - INFO - State change: connecting -> connected
+2025-06-10 18:44:05,304 - tradeforgepy.providers.topstepx.streams - INFO - UserStream status: CONNECTING -> CONNECTED (Reason: SignalR connection established)
+2025-06-10 18:44:05,332 - pysignalr.transport - INFO - State change: connecting -> connected
+2025-06-10 18:44:05,332 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream status: CONNECTING -> CONNECTED (Reason: SignalR connection established)
+2025-06-10 18:44:05,332 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream sending command: 'SubscribeContractQuotes' with args ['CON.F.US.EP.M25']
+2025-06-10 18:44:05,333 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream sending command: 'SubscribeContractMarketDepth' with args ['CON.F.US.EP.M25']
+2025-06-10 18:44:05,429 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 0, 'volume': 0, 'currentVolume': 0, 'type': 6, 'timestamp': '2025-06-11T01:44:05.0224466+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:05,442 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6038.75, 'volume': 383, 'currentVolume': 0, 'type': 5, 'timestamp': '0001-01-01T00:00:00+00:00'}, {'price': 6039.0, 'volume': 479, 'currentVolume': 0, 'type': 5, 'timestamp': '0001-01-01T00:00:00+00:00'}, {'price': 6038.5, 'volume': 292, 'currentVolume': 0, 'type': 5, 'timestamp': '0001-01-01T00:00:00+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:05,489 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 11, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:05.0412863+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:05,889 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.75, 'volume': 273, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:05.4485867+00:00'}, {'price': 6028.5, 'volume': 11, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:05.4486445+00:00'}, {'price': 6029.0, 'volume': 16, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:05.4486499+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:05,940 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6029.0, 'volume': 14, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:05.4992397+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:06,692 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:06.2785321+00:00'}, {'price': 6028.75, 'volume': 5, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:06.2785369+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:07,042 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:06.6140337+00:00'}, {'price': 6028.75, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:06.6140254+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:07,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.75, 'volume': 274, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:06.6780615+00:00'}, {'price': 6028.5, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:06.6781164+00:00'}, {'price': 6028.75, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:06.6781102+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:07,388 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:06.9457757+00:00'}, {'price': 6028.75, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:06.9457514+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:07,892 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 348, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:07.4558947+00:00'}, {'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:07.458217+00:00'}, {'price': 6028.5, 'volume': 3, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:07.4582015+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:08,041 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:07.5914656+00:00'}, {'price': 6028.5, 'volume': 4, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:07.5914537+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:08,342 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:07.8963389+00:00'}, {'price': 6028.5, 'volume': 5, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:07.8963247+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:08,492 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 11, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:08.0586877+00:00'}, {'price': 6028.5, 'volume': 1, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:08.0586932+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:08,742 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 12, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:08.3094059+00:00'}, {'price': 6028.75, 'volume': 12, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:08.3093867+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:09,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.75, 'volume': 13, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:08.6617042+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:09,592 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 3, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:09.1656881+00:00'}, {'price': 6028.75, 'volume': 12, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:09.1656814+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:10,141 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 351, 'currentVolume': 2, 'type': 5, 'timestamp': '2025-06-11T01:44:09.6809474+00:00'}, {'price': 6028.25, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:09.6812201+00:00'}, {'price': 6028.5, 'volume': 4, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:09.6812016+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:10,191 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:09.7560209+00:00'}, {'price': 6028.5, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:09.7560075+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:10,241 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 6, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:09.7851092+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:09.7851201+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:10,792 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:10.3587269+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:10.3587028+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:10,841 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.75, 'volume': 291, 'currentVolume': 4, 'type': 5, 'timestamp': '2025-06-11T01:44:10.4134103+00:00'}, {'price': 6028.5, 'volume': 362, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:10.413915+00:00'}, {'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:10.4140162+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:10,941 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:10.4948883+00:00'}, {'price': 6028.5, 'volume': 6, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:10.4948998+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:11,291 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:10.8327342+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:11,444 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 6, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:11.0290916+00:00'}, {'price': 6028.5, 'volume': 7, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:11.0290849+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:11,542 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 4, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:11.1149003+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:11,690 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 297, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:11.2432565+00:00'}, {'price': 6028.0, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:11.2456026+00:00'}, {'price': 6028.5, 'volume': 13, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:11.2455934+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:11,791 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 6, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:11.3474173+00:00'}, {'price': 6028.5, 'volume': 11, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:11.3480605+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:12,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 11, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:11.6478549+00:00'}, {'price': 6028.5, 'volume': 6, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:11.6478409+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:12,690 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 13, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:12.247781+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:13,468 - pysignalr.client - WARNING - No client method with the name 'GatewayLogout' found.
+2025-06-10 18:44:13,469 - pysignalr.client - WARNING - No client method with the name 'GatewayLogout' found.
+2025-06-10 18:44:14,191 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 374, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:13.7756178+00:00'}, {'price': 6028.25, 'volume': 14, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:13.7756826+00:00'}, {'price': 6028.75, 'volume': 12, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:13.7756583+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:17,442 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 13, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:16.9995639+00:00'}, {'price': 6028.5, 'volume': 1, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:17.0199709+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:17,490 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 12, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:17.0565794+00:00'}, {'price': 6028.5, 'volume': 5, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:17.0565705+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:17,941 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.5, 'volume': 4, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:17.5067316+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:18,342 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 13, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:17.9327097+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:20,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:19.6615678+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:19.6615611+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:21,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.5, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:20.6599632+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:22,792 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:22.3773134+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:23,291 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:22.8338458+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:22.8338411+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:23,441 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:22.9845253+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:23,490 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 6, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:23.0728274+00:00'}, {'price': 6028.5, 'volume': 10, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:23.0728118+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:23,891 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:23.4754137+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:23.4754205+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:24,942 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 12, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:24.5232384+00:00'}, {'price': 6028.5, 'volume': 1, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:24.5232468+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:24,992 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 13, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:24.5509165+00:00'}, {'price': 6028.5, 'volume': 2, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:24.550908+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:25,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 375, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:24.6423995+00:00'}, None, {'price': 6028.5, 'volume': 1, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:24.6424471+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:25,142 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 14, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:24.6925898+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:26,041 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.5, 'volume': 376, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:25.5984497+00:00'}, {'price': 6028.25, 'volume': 15, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:25.6101076+00:00'}, {'price': 6028.75, 'volume': 13, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:25.5985186+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:26,242 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 15, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:25.8005478+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:27,793 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:27.3797638+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:27.3797252+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:27,842 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:27.4198442+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:28,341 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:27.8939529+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:29,742 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 6, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:29.3150178+00:00'}, {'price': 6028.5, 'volume': 7, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:29.3150056+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:31,792 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 301, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:31.3750971+00:00'}, {'price': 6028.0, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:31.3774943+00:00'}, {'price': 6028.25, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:31.3774886+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:31,891 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:31.4791791+00:00'}, {'price': 6028.25, 'volume': 3, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:31.4792071+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:32,142 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 381, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:31.7267187+00:00'}, {'price': 6028.0, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:31.7268135+00:00'}, {'price': 6028.25, 'volume': 3, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:31.7268016+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:32,192 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.25, 'volume': 4, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:31.7534252+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:32,641 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.25, 'volume': 1, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:32.2247892+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:32,989 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 382, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:32.5655974+00:00'}, {'price': 6028.0, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:32.5656126+00:00'}, {'price': 6028.25, 'volume': 5, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:32.5656967+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:33,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:32.6486835+00:00'}, {'price': 6028.25, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:32.6487068+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:33,741 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:33.3035185+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:33,992 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:33.5488258+00:00'}, {'price': 6028.25, 'volume': 4, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:33.5488558+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:34,441 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 11, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:33.9951201+00:00'}, {'price': 6028.25, 'volume': 2, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:33.9951096+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:35,342 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:34.909791+00:00'}, {'price': 6028.25, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:34.9097993+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:35,991 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 310, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:35.5683582+00:00'}, {'price': 6028.0, 'volume': 10, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:35.5699987+00:00'}, {'price': 6028.5, 'volume': 10, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:35.5730716+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:36,092 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:35.6416291+00:00'}, {'price': 6028.25, 'volume': 1, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:35.6416643+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:36,991 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 9, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:36.5783729+00:00'}, {'price': 6028.25, 'volume': 3, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:36.5783672+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:37,691 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 12, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:37.246622+00:00'}, {'price': 6028.5, 'volume': 10, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:37.2466422+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:37,792 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 15, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:37.3498272+00:00'}, {'price': 6028.5, 'volume': 11, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:37.3498423+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:38,142 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:37.7092633+00:00'}, {'price': 6028.5, 'volume': 7, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:37.7092579+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:38,191 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 3, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:37.7798543+00:00'}, {'price': 6028.5, 'volume': 8, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:37.7798083+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:38,291 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 6, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:37.8730085+00:00'}, {'price': 6028.5, 'volume': 7, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:37.8730164+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:38,542 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 4, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:38.1147023+00:00'}, {'price': 6028.5, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:38.1102875+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:38,891 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 3, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:38.4486609+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:39,091 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 5, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:38.6471456+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:41,441 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 315, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:40.9962023+00:00'}, {'price': 6028.0, 'volume': 17, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:40.996246+00:00'}, {'price': 6028.5, 'volume': 9, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:40.9962575+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:41,491 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 16, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:41.0595167+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:41,742 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 317, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:41.3312813+00:00'}, {'price': 6028.0, 'volume': 16, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:41.3313199+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:42,741 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.0, 'volume': 11, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:42.3172461+00:00'}, {'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:42.3172544+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:43,041 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 318, 'currentVolume': 1, 'type': 5, 'timestamp': '2025-06-11T01:44:42.6232525+00:00'}, {'price': 6028.0, 'volume': 13, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:42.6233256+00:00'}, {'price': 6028.5, 'volume': 11, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:42.623386+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:43,141 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:42.701845+00:00'}, {'price': 6028.5, 'volume': 3, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:42.7018518+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:43,389 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.5, 'volume': 6, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:42.9486874+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:43,491 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.5, 'volume': 3, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:43.0362561+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:43,891 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [None, {'price': 6028.5, 'volume': 6, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:43.4669764+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:43,941 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 7, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:43.5204164+00:00'}, None]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:44,388 - tradeforgepy.providers.topstepx.mapper - ERROR - Error mapping TS depth stream: name 'UTC_TZ' is not defined. Data sample: [{'price': 6028.25, 'volume': 8, 'currentVolume': 0, 'type': 4, 'timestamp': '2025-06-11T01:44:43.9412368+00:00'}, {'price': 6028.5, 'volume': 5, 'currentVolume': 0, 'type': 3, 'timestamp': '2025-06-11T01:44:43.9412429+00:00'}]...
+Traceback (most recent call last):
+  File "C:\work\TradeForgePy\src\tradeforgepy\providers\topstepx\mapper.py", line 209, in map_ts_depth_to_generic_event
+    latest_timestamp = datetime.now(UTC_TZ)
+                                    ^^^^^^
+NameError: name 'UTC_TZ' is not defined
+2025-06-10 18:44:44,637 - fastapi_service.app.main - INFO - Application shutting down...
+2025-06-10 18:44:44,638 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider disconnecting...
+2025-06-10 18:44:44,639 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream run task cancelled.
+2025-06-10 18:44:44,640 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream status: CONNECTED -> DISCONNECTED (Reason: Run loop finished unexpectedly)
+2025-06-10 18:44:44,640 - tradeforgepy.providers.topstepx.streams - INFO - UserStream run task cancelled.
+2025-06-10 18:44:44,640 - tradeforgepy.providers.topstepx.streams - INFO - UserStream status: CONNECTED -> DISCONNECTED (Reason: Run loop finished unexpectedly)
+2025-06-10 18:44:44,641 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider stream runner task was cancelled.
+2025-06-10 18:44:44,641 - tradeforgepy.providers.topstepx.provider - INFO - Provider's main run_forever task was cancelled.
+2025-06-10 18:44:44,642 - tradeforgepy.providers.topstepx.client - INFO - Closing TopStepXHttpClient's async client session.
+2025-06-10 18:44:44,643 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider disconnected.
+2025-06-10 18:44:44,643 - fastapi_service.app.main - INFO - Trading provider disconnected.

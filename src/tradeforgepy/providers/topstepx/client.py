@@ -1,13 +1,13 @@
 # tradeforgepy/providers/topstepx/client.py
 import httpx
 import asyncio
+import json
 from typing import Optional, Dict, Any, Union
 from datetime import datetime, timedelta
 import logging
 
-from pydantic import BaseModel # <--- ADD THIS IMPORT
+from pydantic import BaseModel
 
-# Import the refined TopStepX specific Pydantic models from our corrected schemas_ts.py
 from .schemas_ts import (
     TSLoginApiKeyRequest, TSLoginResponse, TSValidateResponse,
     TSSearchAccountRequest, TSSearchAccountResponse,
@@ -66,10 +66,13 @@ class TopStepXHttpClient:
             logger.info(f"Authenticating TopStepX user: {self.username}")
             endpoint = "/api/Auth/loginKey"
             request_model = TSLoginApiKeyRequest(userName=self.username, apiKey=self.api_key)
-            payload = request_model.model_dump()
+            
+            # Use model_dump_json to respect json_encoders config
+            content_payload = request_model.model_dump_json()
 
             try:
-                response = await self.async_client.post(f"{self.base_url}{endpoint}", json=payload)
+                # Use content parameter for pre-encoded string
+                response = await self.async_client.post(f"{self.base_url}{endpoint}", content=content_payload, headers={"Content-Type": "application/json"})
                 response.raise_for_status()
                 auth_response = TSLoginResponse.model_validate(response.json())
 
@@ -105,13 +108,12 @@ class TopStepXHttpClient:
     async def _ensure_valid_token(self) -> None:
         is_expired = self._token is None or self._token_acquired_at is None or \
             (datetime.now(UTC_TZ) >= (self._token_acquired_at + self._token_lifetime - self._token_safety_margin))
-        
         if is_expired:
             if not await self._validate_token():
                 await self._authenticate()
 
     async def _request(self, method: str, endpoint: str,
-                       json_payload: Optional[Dict[str, Any]] = None,
+                       content_payload: Optional[str] = None,
                        expected_response_model: Optional[type[BaseModel]] = None
                        ) -> Union[Dict[str, Any], BaseModel]:
         await self._ensure_valid_token()
@@ -120,11 +122,11 @@ class TopStepXHttpClient:
         headers = {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
         url = f"{self.base_url}{endpoint}"
         try:
-            response = await self.async_client.request(method, url, headers=headers, json=json_payload)
+            response = await self.async_client.request(method, url, headers=headers, content=content_payload)
             if response.status_code == 401:
                 await self._authenticate()
                 headers["Authorization"] = f"Bearer {self._token}"
-                response = await self.async_client.request(method, url, headers=headers, json=json_payload)
+                response = await self.async_client.request(method, url, headers=headers, content=content_payload)
             
             response.raise_for_status()
             response_data = response.json()
@@ -144,56 +146,56 @@ class TopStepXHttpClient:
             raise OperationFailedError(f"Unexpected error processing request for {endpoint}: {e}") from e
 
     async def ts_get_accounts(self, only_active: bool = True) -> TSSearchAccountResponse:
-        payload = TSSearchAccountRequest(onlyActiveAccounts=only_active).model_dump()
-        return await self._request("POST", "/api/Account/search", json_payload=payload, expected_response_model=TSSearchAccountResponse) #type: ignore
+        payload = TSSearchAccountRequest(onlyActiveAccounts=only_active).model_dump_json()
+        return await self._request("POST", "/api/Account/search", content_payload=payload, expected_response_model=TSSearchAccountResponse)
 
     async def ts_search_contracts(self, search_text: str, live: bool = False) -> TSSearchContractResponse:
-        payload = TSSearchContractRequest(searchText=search_text, live=live).model_dump()
-        return await self._request("POST", "/api/Contract/search", json_payload=payload, expected_response_model=TSSearchContractResponse) #type: ignore
+        payload = TSSearchContractRequest(searchText=search_text, live=live).model_dump_json()
+        return await self._request("POST", "/api/Contract/search", content_payload=payload, expected_response_model=TSSearchContractResponse)
 
     async def ts_get_contract_by_id(self, contract_id: str) -> TSSearchContractByIdResponse:
-        payload = TSSearchContractByIdRequest(contractId=contract_id).model_dump()
-        return await self._request("POST", "/api/Contract/searchById", json_payload=payload, expected_response_model=TSSearchContractByIdResponse) #type: ignore
+        payload = TSSearchContractByIdRequest(contractId=contract_id).model_dump_json()
+        return await self._request("POST", "/api/Contract/searchById", content_payload=payload, expected_response_model=TSSearchContractByIdResponse)
 
     async def ts_get_historical_bars(self, request: TSRetrieveBarRequest) -> TSRetrieveBarResponse:
-        payload = request.model_dump(by_alias=True, exclude_none=True)
-        return await self._request("POST", "/api/History/retrieveBars", json_payload=payload, expected_response_model=TSRetrieveBarResponse) #type: ignore
+        payload = request.model_dump_json(by_alias=True, exclude_none=True)
+        return await self._request("POST", "/api/History/retrieveBars", content_payload=payload, expected_response_model=TSRetrieveBarResponse)
 
     async def ts_place_order(self, order_request: TSPlaceOrderRequest) -> TSPlaceOrderResponse:
-        payload = order_request.model_dump(exclude_none=True)
-        return await self._request("POST", "/api/Order/place", json_payload=payload, expected_response_model=TSPlaceOrderResponse) #type: ignore
+        payload = order_request.model_dump_json(by_alias=True, exclude_none=True)
+        return await self._request("POST", "/api/Order/place", content_payload=payload, expected_response_model=TSPlaceOrderResponse)
 
     async def ts_cancel_order(self, account_id: int, order_id: int) -> TSCancelOrderResponse:
-        payload = TSCancelOrderRequest(accountId=account_id, orderId=order_id).model_dump()
-        return await self._request("POST", "/api/Order/cancel", json_payload=payload, expected_response_model=TSCancelOrderResponse) #type: ignore
+        payload = TSCancelOrderRequest(accountId=account_id, orderId=order_id).model_dump_json()
+        return await self._request("POST", "/api/Order/cancel", content_payload=payload, expected_response_model=TSCancelOrderResponse)
 
     async def ts_modify_order(self, modify_request: TSModifyOrderRequest) -> TSModifyOrderResponse:
-        payload = modify_request.model_dump(exclude_none=True)
-        return await self._request("POST", "/api/Order/modify", json_payload=payload, expected_response_model=TSModifyOrderResponse) #type: ignore
+        payload = modify_request.model_dump_json(by_alias=True, exclude_none=True)
+        return await self._request("POST", "/api/Order/modify", content_payload=payload, expected_response_model=TSModifyOrderResponse)
 
     async def ts_search_orders(self, search_request: TSSearchOrderRequest) -> TSSearchOrderResponse:
-        payload = search_request.model_dump(exclude_none=True)
-        return await self._request("POST", "/api/Order/search", json_payload=payload, expected_response_model=TSSearchOrderResponse) #type: ignore
+        payload = search_request.model_dump_json(by_alias=True, exclude_none=True)
+        return await self._request("POST", "/api/Order/search", content_payload=payload, expected_response_model=TSSearchOrderResponse)
 
     async def ts_search_open_orders(self, search_open_request: TSSearchOpenOrderRequest) -> TSSearchOrderResponse:
-        payload = search_open_request.model_dump()
-        return await self._request("POST", "/api/Order/searchOpen", json_payload=payload, expected_response_model=TSSearchOrderResponse) #type: ignore
+        payload = search_open_request.model_dump_json()
+        return await self._request("POST", "/api/Order/searchOpen", content_payload=payload, expected_response_model=TSSearchOrderResponse)
 
     async def ts_search_open_positions(self, account_id: int) -> TSSearchPositionResponse:
-        payload = TSSearchPositionRequest(accountId=account_id).model_dump()
-        return await self._request("POST", "/api/Position/searchOpen", json_payload=payload, expected_response_model=TSSearchPositionResponse) #type: ignore
+        payload = TSSearchPositionRequest(accountId=account_id).model_dump_json()
+        return await self._request("POST", "/api/Position/searchOpen", content_payload=payload, expected_response_model=TSSearchPositionResponse)
 
     async def ts_close_contract_position(self, account_id: int, contract_id: str) -> TSClosePositionResponse:
-        payload = TSCloseContractPositionRequest(accountId=account_id, contractId=contract_id).model_dump()
-        return await self._request("POST", "/api/Position/closeContract", json_payload=payload, expected_response_model=TSClosePositionResponse) #type: ignore
+        payload = TSCloseContractPositionRequest(accountId=account_id, contractId=contract_id).model_dump_json()
+        return await self._request("POST", "/api/Position/closeContract", content_payload=payload, expected_response_model=TSClosePositionResponse)
 
     async def ts_partial_close_contract_position(self, account_id: int, contract_id: str, size: int) -> TSPartialClosePositionResponse:
-        payload = TSPartialCloseContractPositionRequest(accountId=account_id, contractId=contract_id, size=size).model_dump()
-        return await self._request("POST", "/api/Position/partialCloseContract", json_payload=payload, expected_response_model=TSPartialClosePositionResponse) #type: ignore
+        payload = TSPartialCloseContractPositionRequest(accountId=account_id, contractId=contract_id, size=size).model_dump_json()
+        return await self._request("POST", "/api/Position/partialCloseContract", content_payload=payload, expected_response_model=TSPartialClosePositionResponse)
 
     async def ts_search_trades(self, search_request: TSSearchTradeRequest) -> TSSearchHalfTradeResponse:
-        payload = search_request.model_dump(exclude_none=True)
-        return await self._request("POST", "/api/Trade/search", json_payload=payload, expected_response_model=TSSearchHalfTradeResponse) #type: ignore
+        payload = search_request.model_dump_json(by_alias=True, exclude_none=True)
+        return await self._request("POST", "/api/Trade/search", content_payload=payload, expected_response_model=TSSearchHalfTradeResponse)
 
     async def close_http_client(self):
         """Closes the underlying httpx.AsyncClient session."""

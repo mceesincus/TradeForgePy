@@ -21,7 +21,7 @@ class OrderType(str, Enum):
     LIMIT = "LIMIT"
     STOP_MARKET = "STOP_MARKET"
     STOP_LIMIT = "STOP_LIMIT"
-    TRAILING_STOP_MARKET = "TRAILING_STOP_MARKET"
+    # TRAILING_STOP_MARKET = "TRAILING_STOP_MARKET" # This feature is disabled due to provider API ambiguity.
 
 class OrderTimeInForce(str, Enum):
     DAY = "DAY"

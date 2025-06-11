@@ -2,12 +2,13 @@
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ["class"], // This is the most important setting for theming
+  darkMode: ["class"],
+  // === THE DEFINITIVE FIX IS HERE ===
+  // This is the most robust content configuration for a Vite + React project.
+  // It ensures Tailwind scans the HTML entry point and ALL relevant files in the src directory.
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   prefix: "",
   theme: {

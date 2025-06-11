@@ -1,0 +1,47 @@
+2025-06-10 18:37:17,985 - fastapi_service.app.main - INFO - Application starting up...
+2025-06-10 18:37:17,985 - fastapi_service.app.dependencies - INFO - Initializing singleton TopStepXProvider instance (Attempt 1/5)...
+2025-06-10 18:37:18,022 - tradeforgepy.providers.topstepx.client - INFO - TopStepXHttpClient initialized for LIVE environment. User: cay7man
+2025-06-10 18:37:18,022 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider initialized for environment: LIVE
+2025-06-10 18:37:18,023 - tradeforgepy.providers.topstepx.client - INFO - Authenticating TopStepX user: cay7man
+2025-06-10 18:37:18,417 - httpx - INFO - HTTP Request: POST https://api.topstepx.com/api/Auth/loginKey "HTTP/1.1 200 OK"
+2025-06-10 18:37:18,419 - tradeforgepy.providers.topstepx.client - INFO - TopStepX auth successful.
+2025-06-10 18:37:18,420 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider HTTP client connected and authenticated successfully.
+2025-06-10 18:37:18,420 - fastapi_service.app.dependencies - INFO - Temporarily subscribing to ESU4 for data capture...
+2025-06-10 18:37:18,420 - tradeforgepy.providers.topstepx.streams - INFO - BaseTopStepXStream 'MarketStream' initialized for URL: rtc.topstepx.com/hubs/market
+2025-06-10 18:37:18,420 - tradeforgepy.providers.topstepx.streams - INFO - BaseTopStepXStream 'UserStream' initialized for URL: rtc.topstepx.com/hubs/user
+2025-06-10 18:37:18,421 - fastapi_service.app.dependencies - INFO - TopStepXProvider initialized and connected successfully.
+2025-06-10 18:37:18,421 - fastapi_service.app.main - INFO - Trading provider successfully initialized during startup.
+2025-06-10 18:37:18,421 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider running 2 stream(s) concurrently.
+2025-06-10 18:37:18,422 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream status: DISCONNECTED -> CONNECTING (Reason: N/A)
+2025-06-10 18:37:18,422 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream starting run loop...
+2025-06-10 18:37:18,423 - tradeforgepy.providers.topstepx.streams - INFO - UserStream status: DISCONNECTED -> CONNECTING (Reason: N/A)
+2025-06-10 18:37:18,423 - tradeforgepy.providers.topstepx.streams - INFO - UserStream starting run loop...
+2025-06-10 18:37:18,423 - pysignalr.transport - INFO - State change: disconnected -> connecting
+2025-06-10 18:37:18,423 - pysignalr.transport - INFO - Performing negotiation, URL: `https://rtc.topstepx.com/hubs/market/negotiate?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEyNjcxNiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6Ijc3MDVhYTNkLWU5YTQtNGNiMy1hMWQzLTI4Yzk3NDI0NTVkZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJjYXk3bWFuIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoidXNlciIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvYXV0aGVudGljYXRpb25tZXRob2QiOiJhcGkta2V5IiwibXNkIjoiQ01FR1JPVVBfVE9CIiwibWZhIjoidmVyaWZpZWQiLCJleHAiOjE3NDk2OTIyMzd9.Ailv5u2mqkuoeDS6YLia50tN8Kbj2MhFrMTjlebxKkc`
+2025-06-10 18:37:18,423 - pysignalr.transport - INFO - State change: disconnected -> connecting
+2025-06-10 18:37:18,425 - pysignalr.transport - INFO - Performing negotiation, URL: `https://rtc.topstepx.com/hubs/user/negotiate?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEyNjcxNiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3NpZCI6Ijc3MDVhYTNkLWU5YTQtNGNiMy1hMWQzLTI4Yzk3NDI0NTVkZSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJjYXk3bWFuIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoidXNlciIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvYXV0aGVudGljYXRpb25tZXRob2QiOiJhcGkta2V5IiwibXNkIjoiQ01FR1JPVVBfVE9CIiwibWZhIjoidmVyaWZpZWQiLCJleHAiOjE3NDk2OTIyMzd9.Ailv5u2mqkuoeDS6YLia50tN8Kbj2MhFrMTjlebxKkc`
+2025-06-10 18:37:18,817 - pysignalr.transport - INFO - Negotiation completed
+2025-06-10 18:37:18,818 - pysignalr.transport - INFO - Negotiation completed
+2025-06-10 18:37:19,118 - pysignalr.transport - INFO - Sending handshake to server
+2025-06-10 18:37:19,118 - pysignalr.transport - INFO - Awaiting handshake from server
+2025-06-10 18:37:19,133 - pysignalr.transport - INFO - Sending handshake to server
+2025-06-10 18:37:19,133 - pysignalr.transport - INFO - Awaiting handshake from server
+2025-06-10 18:37:19,198 - pysignalr.transport - INFO - State change: connecting -> connected
+2025-06-10 18:37:19,199 - tradeforgepy.providers.topstepx.streams - INFO - UserStream status: CONNECTING -> CONNECTED (Reason: SignalR connection established)
+2025-06-10 18:37:19,210 - pysignalr.transport - INFO - State change: connecting -> connected
+2025-06-10 18:37:19,210 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream status: CONNECTING -> CONNECTED (Reason: SignalR connection established)
+2025-06-10 18:37:19,211 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream sending command: 'SubscribeContractQuotes' with args ['ESU4']
+2025-06-10 18:37:19,212 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream sending command: 'SubscribeContractMarketDepth' with args ['ESU4']
+2025-06-10 18:37:28,150 - pysignalr.client - WARNING - No client method with the name 'GatewayLogout' found.
+2025-06-10 18:37:28,152 - pysignalr.client - WARNING - No client method with the name 'GatewayLogout' found.
+2025-06-10 18:43:41,124 - fastapi_service.app.main - INFO - Application shutting down...
+2025-06-10 18:43:41,124 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider disconnecting...
+2025-06-10 18:43:41,125 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream run task cancelled.
+2025-06-10 18:43:41,125 - tradeforgepy.providers.topstepx.streams - INFO - MarketStream status: CONNECTED -> DISCONNECTED (Reason: Run loop finished unexpectedly)
+2025-06-10 18:43:41,125 - tradeforgepy.providers.topstepx.streams - INFO - UserStream run task cancelled.
+2025-06-10 18:43:41,125 - tradeforgepy.providers.topstepx.streams - INFO - UserStream status: CONNECTED -> DISCONNECTED (Reason: Run loop finished unexpectedly)
+2025-06-10 18:43:41,126 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider stream runner task was cancelled.
+2025-06-10 18:43:41,126 - tradeforgepy.providers.topstepx.provider - INFO - Provider's main run_forever task was cancelled.
+2025-06-10 18:43:41,126 - tradeforgepy.providers.topstepx.client - INFO - Closing TopStepXHttpClient's async client session.
+2025-06-10 18:43:41,127 - tradeforgepy.providers.topstepx.provider - INFO - TopStepXProvider disconnected.
+2025-06-10 18:43:41,127 - fastapi_service.app.main - INFO - Trading provider disconnected.
