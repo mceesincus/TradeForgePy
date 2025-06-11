@@ -105,8 +105,6 @@ class PlaceOrderRequest(BaseModel):
     stop_price: Optional[float] = Field(None, gt=0)
     time_in_force: OrderTimeInForce = OrderTimeInForce.DAY
     client_order_id: Optional[str] = None
-    # The 'linked_provider_order_id' field has been removed. The underlying provider API for
-    # bracket/OCO orders was found to be unreliable, creating unacceptable risk.
 
 class OrderPlacementResponse(GenericBaseModel):
     order_id_acknowledged: bool

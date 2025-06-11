@@ -67,7 +67,7 @@ class TSRetrieveBarRequest(BaseModel): model_config = MODEL_CONFIG_TS; contractI
 class TSSearchOrderRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int; startTimestamp: str; endTimestamp: Optional[str] = None
 class TSSearchTradeRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int; startTimestamp: Optional[str] = None; endTimestamp: Optional[str] = None
 class TSSearchOpenOrderRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int
-class TSPlaceOrderRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int; contractId: str; type: TSTraderOrderType; side: TSOrderSide; size: int; limitPrice: Optional[Decimal] = None; stopPrice: Optional[Decimal] = None; trailPrice: Optional[Decimal] = None; customTag: Optional[str] = None; linkedOrderId: Optional[int] = None
+class TSPlaceOrderRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int; contractId: str; type: TSTraderOrderType; side: TSOrderSide; size: int; limitPrice: Optional[Decimal] = None; stopPrice: Optional[Decimal] = None; trailPrice: Optional[Decimal] = None; customTag: Optional[str] = None
 class TSCancelOrderRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int; orderId: int
 class TSModifyOrderRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int; orderId: int; size: Optional[int] = None; limitPrice: Optional[Decimal] = None; stopPrice: Optional[Decimal] = None; trailPrice: Optional[Decimal] = None
 class TSSearchPositionRequest(BaseModel): model_config = MODEL_CONFIG_TS; accountId: int
