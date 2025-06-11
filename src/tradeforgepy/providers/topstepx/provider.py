@@ -316,7 +316,10 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
 
     async def unsubscribe_market_data(self, provider_contract_ids: List[str], data_types: List[MarketDataType]):
         if self.market_stream_handler:
-            for contract_id in provider_contract_ids: await self.market_stream_handler.unsubscribe_contract(contract_id, data_types)
+            tasks = [self.market_stream_handler.unsubscribe_contract(cid, data_types) for cid in provider_contract_ids]
+            await asyncio.gather(*tasks)
+        else:
+            logger.warning("Cannot unsubscribe market data: market stream handler not initialized.")
 
     async def subscribe_user_data(self, provider_account_ids: List[str], data_types: List[UserDataType]):
         if not self.user_stream_handler: await self._init_stream_handlers_if_needed()
@@ -328,10 +331,15 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
 
     async def unsubscribe_user_data(self, provider_account_ids: List[str], data_types: List[UserDataType]):
         if self.user_stream_handler:
-            if UserDataType.ACCOUNT_UPDATE in data_types: await self.user_stream_handler.unsubscribe_global_accounts()
+            if UserDataType.ACCOUNT_UPDATE in data_types:
+                await self.user_stream_handler.unsubscribe_global_accounts()
+            
             specific_types = [dt for dt in data_types if dt != UserDataType.ACCOUNT_UPDATE]
             if specific_types:
-                for acc_id in provider_account_ids: await self.user_stream_handler.unsubscribe_account(acc_id, specific_types)
+                tasks = [self.user_stream_handler.unsubscribe_account(acc_id, specific_types) for acc_id in provider_account_ids]
+                await asyncio.gather(*tasks)
+        else:
+            logger.warning("Cannot unsubscribe user data: user stream handler not initialized.")
 
     def get_status(self) -> StreamConnectionStatus:
         statuses = self.get_stream_statuses().values()
