@@ -162,6 +162,7 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
         super().__init__(*args, **kwargs)
         self.pending_subscriptions: Dict[str, Set[MarketDataType]] = {}
         self.mapper = None
+        self._subscription_lock = asyncio.Lock()
 
     def _register_specific_handlers(self):
         if not self.connection: return
@@ -170,44 +171,52 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
         self.connection.on("GatewayDepth", self._handle_ts_depth)
 
     async def _send_pending_subscriptions(self):
-        for contract_id, data_types in self.pending_subscriptions.items():
+        async with self._subscription_lock:
+            # Create a copy of items to iterate over, as the dict can change.
+            pending_items = list(self.pending_subscriptions.items())
+        
+        for contract_id, data_types in pending_items:
             if MarketDataType.QUOTE in data_types: await self._invoke_subscription_command("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}")
             if MarketDataType.DEPTH in data_types: await self._invoke_subscription_command("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}")
 
     async def subscribe_contract(self, contract_id: str, data_types: List[MarketDataType]):
-        if contract_id not in self.pending_subscriptions: self.pending_subscriptions[contract_id] = set()
-        self.pending_subscriptions[contract_id].update(dt for dt in data_types if dt != MarketDataType.TRADE) # TRADE is implicit
-        if self.current_status == StreamConnectionStatus.CONNECTED: await self._send_pending_subscriptions()
+        async with self._subscription_lock:
+            if contract_id not in self.pending_subscriptions: self.pending_subscriptions[contract_id] = set()
+            self.pending_subscriptions[contract_id].update(dt for dt in data_types if dt != MarketDataType.TRADE) # TRADE is implicit
+        
+        if self.current_status == StreamConnectionStatus.CONNECTED:
+            await self._send_pending_subscriptions()
 
     async def unsubscribe_contract(self, contract_id: str, data_types: List[MarketDataType]):
-        if contract_id not in self.pending_subscriptions:
-            logger.warning(f"Cannot unsubscribe from {contract_id}: not subscribed.")
-            return
+        async with self._subscription_lock:
+            if contract_id not in self.pending_subscriptions:
+                logger.warning(f"Cannot unsubscribe from {contract_id}: not subscribed.")
+                return
 
-        types_to_remove = set()
-        for data_type in data_types:
-            command = None
-            if data_type == MarketDataType.QUOTE:
-                command = "UnsubscribeContractQuotes"
-            elif data_type == MarketDataType.DEPTH:
-                command = "UnsubscribeContractMarketDepth"
-            
-            if command:
-                if data_type in self.pending_subscriptions.get(contract_id, set()):
-                    log_msg = f"Unsubscribe {data_type.value} for {contract_id}"
-                    success = await self._invoke_subscription_command(command, [contract_id], log_msg)
-                    if success:
-                        types_to_remove.add(data_type)
-                else:
-                    logger.debug(f"Skipping unsubscribe for {data_type.value} on {contract_id}: not in pending subscriptions.")
+            types_to_remove = set()
+            for data_type in data_types:
+                command = None
+                if data_type == MarketDataType.QUOTE:
+                    command = "UnsubscribeContractQuotes"
+                elif data_type == MarketDataType.DEPTH:
+                    command = "UnsubscribeContractMarketDepth"
+                
+                if command:
+                    if data_type in self.pending_subscriptions.get(contract_id, set()):
+                        log_msg = f"Unsubscribe {data_type.value} for {contract_id}"
+                        success = await self._invoke_subscription_command(command, [contract_id], log_msg)
+                        if success:
+                            types_to_remove.add(data_type)
+                    else:
+                        logger.debug(f"Skipping unsubscribe for {data_type.value} on {contract_id}: not in pending subscriptions.")
 
-        if types_to_remove:
-            self.pending_subscriptions[contract_id].difference_update(types_to_remove)
-            logger.info(f"Updated pending subscriptions for {contract_id}: removed {types_to_remove}")
-            
-            if not self.pending_subscriptions[contract_id]:
-                del self.pending_subscriptions[contract_id]
-                logger.info(f"Removed contract {contract_id} from all market subscriptions.")
+            if types_to_remove:
+                self.pending_subscriptions[contract_id].difference_update(types_to_remove)
+                logger.info(f"Updated pending subscriptions for {contract_id}: removed {types_to_remove}")
+                
+                if not self.pending_subscriptions[contract_id]:
+                    del self.pending_subscriptions[contract_id]
+                    logger.info(f"Removed contract {contract_id} from all market subscriptions.")
 
     async def _handle_ts_quote(self, args: List[Any]):
         if self.mapper and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], dict):
@@ -230,6 +239,7 @@ class TopStepXUserStreamInternal(_BaseTopStepXStream):
         self.pending_account_subscriptions: Dict[str, Set[UserDataType]] = {}
         self.pending_global_subscription = False
         self.mapper = None
+        self._subscription_lock = asyncio.Lock()
 
     def _register_specific_handlers(self):
         if not self.connection: return
@@ -239,16 +249,18 @@ class TopStepXUserStreamInternal(_BaseTopStepXStream):
         self.connection.on("GatewayUserTrade", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_user_trade_to_generic_event")))
 
     async def _send_pending_subscriptions(self):
-        if self.pending_global_subscription:
+        async with self._subscription_lock:
+            # Create a copy of state to iterate over
+            is_global_sub = self.pending_global_subscription
+            pending_accs = list(self.pending_account_subscriptions.items())
+
+        if is_global_sub:
             await self._invoke_subscription_command("SubscribeAccounts", [], "Global Accounts")
         
-        # Make a copy of items to handle potential modifications during iteration
-        for acc_id_str, data_types in list(self.pending_account_subscriptions.items()):
+        for acc_id_str, data_types in pending_accs:
             try:
                 acc_id_int = int(acc_id_str)
-                # We do not remove items from the pending list here.
-                # This ensures that if the connection drops and reconnects,
-                # the resubscription will still have the necessary data to proceed.
+                # Resubscribe based on the stored desired state.
                 if UserDataType.ORDER_UPDATE in data_types: await self._invoke_subscription_command("SubscribeOrders", [acc_id_int], f"Orders for Acc {acc_id_int}")
                 if UserDataType.POSITION_UPDATE in data_types: await self._invoke_subscription_command("SubscribePositions", [acc_id_int], f"Positions for Acc {acc_id_int}")
                 if UserDataType.USER_TRADE in data_types: await self._invoke_subscription_command("SubscribeTrades", [acc_id_int], f"UserTrades for Acc {acc_id_int}")
@@ -256,61 +268,67 @@ class TopStepXUserStreamInternal(_BaseTopStepXStream):
                 continue
     
     async def subscribe_global_accounts(self):
-        self.pending_global_subscription = True
-        if self.current_status == StreamConnectionStatus.CONNECTED: await self._send_pending_subscriptions()
+        async with self._subscription_lock:
+            self.pending_global_subscription = True
+        if self.current_status == StreamConnectionStatus.CONNECTED:
+            await self._send_pending_subscriptions()
     
     async def subscribe_account(self, account_id_str: str, data_types: List[UserDataType]):
-        if account_id_str not in self.pending_account_subscriptions: self.pending_account_subscriptions[account_id_str] = set()
-        self.pending_account_subscriptions[account_id_str].update(data_types)
-        if self.current_status == StreamConnectionStatus.CONNECTED: await self._send_pending_subscriptions()
+        async with self._subscription_lock:
+            if account_id_str not in self.pending_account_subscriptions: self.pending_account_subscriptions[account_id_str] = set()
+            self.pending_account_subscriptions[account_id_str].update(data_types)
+        if self.current_status == StreamConnectionStatus.CONNECTED:
+            await self._send_pending_subscriptions()
     
     async def unsubscribe_account(self, account_id_str: str, data_types: List[UserDataType]):
-        if account_id_str not in self.pending_account_subscriptions:
-            logger.warning(f"Cannot unsubscribe from account {account_id_str}: not subscribed.")
-            return
+        async with self._subscription_lock:
+            if account_id_str not in self.pending_account_subscriptions:
+                logger.warning(f"Cannot unsubscribe from account {account_id_str}: not subscribed.")
+                return
 
-        try:
-            acc_id_int = int(account_id_str)
-        except ValueError:
-            logger.error(f"Invalid account ID format for unsubscription: {account_id_str}")
-            return
+            try:
+                acc_id_int = int(account_id_str)
+            except ValueError:
+                logger.error(f"Invalid account ID format for unsubscription: {account_id_str}")
+                return
             
-        types_to_remove = set()
-        for data_type in data_types:
-            command = None
-            if data_type == UserDataType.ORDER_UPDATE:
-                command = "UnsubscribeOrders"
-            elif data_type == UserDataType.POSITION_UPDATE:
-                command = "UnsubscribePositions"
-            elif data_type == UserDataType.USER_TRADE:
-                command = "UnsubscribeTrades"
+            types_to_remove = set()
+            for data_type in data_types:
+                command = None
+                if data_type == UserDataType.ORDER_UPDATE:
+                    command = "UnsubscribeOrders"
+                elif data_type == UserDataType.POSITION_UPDATE:
+                    command = "UnsubscribePositions"
+                elif data_type == UserDataType.USER_TRADE:
+                    command = "UnsubscribeTrades"
+                
+                if command:
+                    if data_type in self.pending_account_subscriptions.get(account_id_str, set()):
+                        log_msg = f"Unsubscribe {data_type.value} for Acc {acc_id_int}"
+                        success = await self._invoke_subscription_command(command, [acc_id_int], log_msg)
+                        if success:
+                            types_to_remove.add(data_type)
+                    else:
+                        logger.debug(f"Skipping unsubscribe for {data_type.value} on account {acc_id_int}: not in pending subscriptions.")
             
-            if command:
-                if data_type in self.pending_account_subscriptions.get(account_id_str, set()):
-                    log_msg = f"Unsubscribe {data_type.value} for Acc {acc_id_int}"
-                    success = await self._invoke_subscription_command(command, [acc_id_int], log_msg)
-                    if success:
-                        types_to_remove.add(data_type)
-                else:
-                    logger.debug(f"Skipping unsubscribe for {data_type.value} on account {acc_id_int}: not in pending subscriptions.")
-        
-        if types_to_remove:
-            self.pending_account_subscriptions[account_id_str].difference_update(types_to_remove)
-            logger.info(f"Updated pending subscriptions for account {account_id_str}: removed {types_to_remove}")
+            if types_to_remove:
+                self.pending_account_subscriptions[account_id_str].difference_update(types_to_remove)
+                logger.info(f"Updated pending subscriptions for account {account_id_str}: removed {types_to_remove}")
 
-            if not self.pending_account_subscriptions[account_id_str]:
-                del self.pending_account_subscriptions[account_id_str]
-                logger.info(f"Removed account {account_id_str} from all specific subscriptions.")
+                if not self.pending_account_subscriptions[account_id_str]:
+                    del self.pending_account_subscriptions[account_id_str]
+                    logger.info(f"Removed account {account_id_str} from all specific subscriptions.")
 
     async def unsubscribe_global_accounts(self):
-        if not self.pending_global_subscription:
-            logger.warning("Cannot unsubscribe from global accounts: not subscribed.")
-            return
+        async with self._subscription_lock:
+            if not self.pending_global_subscription:
+                logger.warning("Cannot unsubscribe from global accounts: not subscribed.")
+                return
             
-        success = await self._invoke_subscription_command("UnsubscribeAccounts", [], "Global Accounts Unsubscribe")
-        if success:
-            self.pending_global_subscription = False
-            logger.info("Successfully unsubscribed from global accounts.")
+            success = await self._invoke_subscription_command("UnsubscribeAccounts", [], "Global Accounts Unsubscribe")
+            if success:
+                self.pending_global_subscription = False
+                logger.info("Successfully unsubscribed from global accounts.")
 
     async def _handle_generic_user_event(self, args: List[Any], mapper_func_name: str):
         if self.mapper and len(args) >= 1 and isinstance(args[0], dict):
