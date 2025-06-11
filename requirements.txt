@@ -1,0 +1,35 @@
+# ==============================================================================
+# Dependencies for TradeForgePy
+# ==============================================================================
+# Use this file to install the required packages:
+# pip install -r requirements.txt
+# ------------------------------------------------------------------------------
+
+# --- Web Framework & Server ---
+
+# FastAPI is the core web framework for building the API service.
+fastapi
+
+# Uvicorn is the high-performance ASGI server used to run the FastAPI application.
+# The [standard] option includes recommended dependencies like websockets support,
+# which is necessary for the real-time streaming endpoint.
+uvicorn[standard]
+
+
+# --- Core Library Dependencies ---
+
+# Pydantic is used extensively for data modeling, validation, and serialization
+# across the generic core, provider schemas, and FastAPI request/response models.
+pydantic
+
+# Pydantic-Settings handles loading configuration from the .env file and
+# populating the Settings model.
+pydantic-settings
+
+# HTTPX is the modern, asynchronous HTTP client used for all REST API calls
+# to the trading provider's (TopStepX) API.
+httpx
+
+# Pysignalr-client is the WebSocket client used to connect to the provider's
+# real-time SignalR hubs for market and user data streaming.
+pysignalr-client

@@ -1,592 +1,434 @@
-Of course. Based on the complete project context, its architecture, current status, and future goals, here is a detailed, professional README.md file. It is formatted as a single, self-contained Markdown file suitable for the root of your project repository.
+Of course. Based on our entire development and a full understanding of the project's current state, here is a comprehensive, updated README.md file.
 
 
 
-TradeForgePy - A Generic, Asynchronous Trading API Library
+This README serves as the primary entry point for new developers, explaining the project's purpose, architecture, how to get started, and its current status, including its known limitations.
 
 
 
-!\[alt text](https://img.shields.io/badge/version-0.1.0--alpha-blue)
+\# TradeForgePy - A Generic, Asynchronous Trading API Library
 
 
 
+\*\*TradeForgePy\*\* is a high-performance, asynchronous Python library designed to provide a clean, consistent, and provider-agnostic interface for interacting with trading platform APIs. The project includes a ready-to-use FastAPI service that exposes all library features via a modern REST and WebSocket API.
 
 
-!\[alt text](https://img.shields.io/badge/python-3.11+-blue.svg)
 
+The core objective is to abstract away the specific complexities of each trading provider's API, allowing developers to build robust trading applications, bots, and dashboards on a stable and unified foundation. The first concrete implementation is a full-featured provider for the \*\*TopStepX\*\* platform.
 
 
 
+\## ✨ Key Features
 
-!\[alt text](https://img.shields.io/badge/license-MIT-green.svg)
 
 
+\-   \*\*Provider-Agnostic Core:\*\* A generic set of Pydantic models and Abstract Base Classes that define a standard interface for any trading platform.
 
-A modern, provider-agnostic Python library for interacting with trading platform APIs, offering a clean, consistent interface for both REST API calls and real-time data streaming.
+\-   \*\*Complete TopStepX Provider:\*\* A full implementation of the `TradingPlatformAPI` and `RealTimeStream` interfaces for the TopStepX API, covering all documented REST endpoints and SignalR stream events.
 
+\-   \*\*High-Performance FastAPI Service:\*\* A production-ready web service that exposes the library's functionality, including:
 
+&nbsp;   -   REST endpoints for all account management, order execution, and data retrieval.
 
-Core Objective
+&nbsp;   -   A single WebSocket endpoint for streaming all subscribed real-time market and user data.
 
+\-   \*\*Resilient Real-Time Streaming:\*\* The real-time stream handlers are built to be robust, featuring automatic reconnection and re-subscription logic with exponential backoff to handle network disruptions gracefully.
 
+\-   \*\*Fully Asynchronous:\*\* Built from the ground up with `asyncio`, ensuring high throughput and responsiveness for real-time applications.
 
-TradeForgePy aims to simplify the development of custom trading tools, bots, and analytics dashboards by abstracting away the specific implementation details of various trading platforms. By providing a unified set of interfaces and data models, developers can write code once and potentially switch between different brokerage or platform providers with minimal changes.
 
 
+\## 🏛️ Project Architecture
 
-This library is built from the ground up with asyncio to be highly performant and non-blocking, making it ideal for real-time, event-driven trading applications.
 
 
+The project is designed with a clear separation of concerns, making it modular and easy to extend.
 
-Key Features
 
 
 
-Asynchronous-First: Built entirely with asyncio and httpx for high-performance, non-blocking I/O suitable for real-time financial applications.
 
+.
 
+├── fastapi\_service/ # The user-facing FastAPI application
 
-Provider-Agnostic Architecture: A generic core defines the standard interfaces and data models. Specific platforms are implemented as providers, ensuring consistent code for the end-user.
+│ ├── main.py # Defines API endpoints and WebSocket logic
 
+│ └── ...
 
+├── tradeforgepy/
 
-Unified REST and Streaming: Provides a single, cohesive provider object for handling both historical data/account management (REST) and live market/user data (WebSockets/SignalR).
+│ ├── core/ # The generic, provider-agnostic core
 
+│ │ ├── enums.py
 
+│ │ ├── interfaces.py # Abstract Base Classes for any provider
 
-Type-Safe: Leverages Pydantic extensively for robust data validation, clear schemas, and an improved developer experience with auto-completion.
+│ │ └── models\_generic.py
 
+│ └── providers/
 
+│ └── topstepx/ # The TopStepX-specific implementation
 
-Extensible by Design: The provider model makes it straightforward to add support for new trading platforms by simply implementing the core interfaces.
+│ ├── client.py # Low-level async HTTP client
 
+│ ├── mapper.py # Maps provider data to generic models
 
+│ ├── provider.py # Implements the core interfaces
 
-Clean Data Models: Offers a set of generic, easy-to-understand Pydantic models (Account, Order, Contract, Trade, etc.) for all common trading entities.
+│ └── streams.py # SignalR stream management \& resilience
 
+├── examples/ # Example scripts demonstrating library usage
 
+├── tests/ # (Future work) Pytest suite
 
-Project Status
+├── .env.example # Example configuration file
 
+└── requirements.txt
 
 
-✅ Generic Core: The core interfaces, enums, and generic data models are complete and stable.
 
+\## 🚀 Getting Started
 
 
-✅ TopStepX Provider - REST API: The TopStepXProvider has a complete and validated implementation for all REST API endpoints, including authentication, account/position/order management, and historical data retrieval.
 
+Follow these steps to get the FastAPI service running locally.
 
 
-🟡 TopStepX Provider - Real-Time Streams: The streaming connection and foundational message handling are implemented. Mappers for market data (Quotes, Depth) and account updates are complete. Mappers for user trading events (OrderUpdate, UserTrade, PositionUpdate) are pending finalization with live data.
 
+\### 1. Prerequisites
 
 
-🔜 Next Steps:
 
+\-   Python 3.11+
 
+\-   Git
 
-Finalize the remaining real-time stream event mappers for the TopStepX provider.
 
 
+\### 2. Installation \& Setup
 
-Build a FastAPI service to expose the library's functionality over a web API.
 
 
+\*\*A) Clone the repository:\*\*
 
-Add a second provider implementation (e.g., Tradovate, Bybit) to validate the generic architecture.
+```bash
 
+git clone https://path/to/your/tradeforgepy/repo.git
 
+cd tradeforgepy
 
-Installation
 
 
+B) Create a virtual environment and install dependencies:
 
-This project uses modern Python packaging. A new dependency, pydantic-settings, is required.
 
 
+\# Create and activate the virtual environment
 
-\# Ensure you have the required dependencies
+python -m venv venv
 
-pip install httpx pysignalr-client pydantic pydantic-settings
+source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 
 
 
-\# For now, the project can be run directly from the source.
+\# Install required packages
 
-\# A setup.py or pyproject.toml will be added for pip installation later.
+pip install -r requirements.txt
 
-\# git clone https://your-repo-url/TradeForgePy.git
 
-\# cd TradeForgePy
 
+3\. Configuration
 
 
-Configuration
 
+The service requires API credentials for the trading provider.
 
 
-The library uses a .env file in the project root for configuration, managed by pydantic-settings. Create a file named .env in the root of the project directory.
 
+A) Create a .env file:
 
+Copy the example configuration file to create your own local version.
 
-.env.example
 
 
+cp .env.example .env
 
-Copy the following into your .env file and replace the placeholder values with your actual credentials.
 
 
+B) Edit the .env file:
 
-\# .env file for TradeForgePy
+Open the newly created .env file and fill in your TopStepX credentials.
 
 
 
-\# == Core API Credentials (Required) ==
+\# .env
 
-TS\_USERNAME="your\_topstepx\_username"
+
+
+\# Your TopStepX Username
+
+TS\_USERNAME="your\_topstep\_username"
+
+
+
+\# Your TopStepX API Key (generate this from your TopStepX dashboard)
 
 TS\_API\_KEY="your\_topstepx\_api\_key"
 
 
 
-\# == Environment Selection (Required) ==
+\# The environment to connect to. Use "DEMO" for practice/testing or "LIVE" for real funds.
 
-\# Set to "LIVE" for the production TopStepX environment, or "DEMO" for the demo environment.
+\# It is STRONGLY recommended to start with "DEMO".
 
-TS\_ENVIRONMENT="LIVE"
-
-
-
-\# == Default values for Capture/Test Scripts ==
-
-\# Use a liquid contract like ESU4 (E-mini S\&P) or NQU4 (E-mini Nasdaq) for testing.
-
-TS\_CAPTURE\_CONTRACT\_ID="ESU4"
-
-TS\_CAPTURE\_ACCOUNT\_ID="your\_numeric\_live\_account\_id"
-
-&nbsp;
-
-Quick Start: REST API Usage
+TS\_ENVIRONMENT="DEMO"
 
 
 
-This example demonstrates how to instantiate the provider, connect, and fetch your account details.
+\# (Optional) Default account ID to use for some example scripts
+
+TS\_CAPTURE\_ACCOUNT\_ID="your\_numeric\_account\_id"
+
+
+
+4\. Run the Service
+
+
+
+With the dependencies installed and configuration set, run the FastAPI service using uvicorn:
+
+
+
+uvicorn fastapi\_service.main:app --reload
+
+
+
+The API service is now running!
+
+
+
+API URL: http://127.0.0.1:8000
+
+
+
+Interactive Docs (Swagger UI): http://127.0.0.1:8000/docs
+
+
+
+We highly recommend opening the interactive documentation in your browser to explore and test the available REST endpoints.
+
+
+
+🛠️ API Usage
+
+
+
+The service provides two primary ways to interact with the trading platform: a REST API for request/response actions and a WebSocket for real-time data.
+
+
+
+REST API
+
+
+
+The REST API provides endpoints for all standard trading operations like fetching accounts, searching for contracts, placing orders, and querying historical data.
+
+
+
+The best way to explore all available REST endpoints is through the auto-generated interactive documentation available at http://127.0.0.1:8000/docs when the service is running.
+
+
+
+WebSocket Real-Time Stream
+
+
+
+For real-time data, connect to the single WebSocket endpoint to receive a stream of market and user-related events.
+
+
+
+Endpoint URL: ws://127.0.0.1:8000/ws/stream
+
+
+
+Workflow:
+
+
+
+Establish a WebSocket connection.
+
+
+
+Send a single JSON message to subscribe to desired data feeds.
+
+
+
+Begin receiving event messages from the server.
+
+
+
+Example Subscription Message:
+
+To subscribe, send a JSON message like this:
+
+
+
+{
+
+&nbsp; "action": "subscribe",
+
+&nbsp; "market\_data": {
+
+&nbsp;   "provider\_contract\_ids": \["CON.F.US.MES.M25"],
+
+&nbsp;   "data\_types": \["QUOTE", "DEPTH"]
+
+&nbsp; },
+
+&nbsp; "user\_data": {
+
+&nbsp;   "provider\_account\_ids": \["YOUR\_ACCOUNT\_ID"],
+
+&nbsp;   "data\_types": \["ORDER\_UPDATE", "POSITION\_UPDATE"]
+
+&nbsp; }
+
+}
+
+
+
+Example Python Client:
 
 
 
 import asyncio
 
-import logging
+import websockets
 
-from tradeforgepy.providers.topstepx import TopStepXProvider
-
-from tradeforgepy.exceptions import TradeForgeError
+import json
 
 
 
-\# Basic logging setup
+async def stream\_client():
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+&nbsp;   uri = "ws://127.0.0.1:8000/ws/stream"
 
+&nbsp;   async with websockets.connect(uri) as websocket:
 
+&nbsp;       # Define and send subscription message
 
-async def main():
+&nbsp;       subscription\_msg = {
 
-&nbsp;   """
+&nbsp;         "action": "subscribe",
 
-&nbsp;   A simple example to connect to the provider and fetch account data.
+&nbsp;         "user\_data": {
 
-&nbsp;   """
+&nbsp;           "provider\_account\_ids": \["YOUR\_ACCOUNT\_ID\_HERE"],
 
-&nbsp;   provider = None
+&nbsp;           "data\_types": \["ORDER\_UPDATE", "POSITION\_UPDATE"]
 
-&nbsp;   try:
+&nbsp;         }
 
-&nbsp;       # Provider automatically loads credentials from your .env file
+&nbsp;       }
 
-&nbsp;       provider = TopStepXProvider()
+&nbsp;       await websocket.send(json.dumps(subscription\_msg))
 
-
-
-&nbsp;       # Establish connection and authenticate
-
-&nbsp;       await provider.connect()
-
-&nbsp;       logging.info("Successfully connected to the provider.")
+&nbsp;       print(f"> Sent subscription: {subscription\_msg}")
 
 
 
-&nbsp;       # Fetch all tradable accounts
+&nbsp;       # Listen for incoming messages
 
-&nbsp;       accounts = await provider.get\_accounts()
+&nbsp;       while True:
 
+&nbsp;           try:
 
+&nbsp;               message = await websocket.recv()
 
-&nbsp;       if not accounts:
+&nbsp;               data = json.loads(message)
 
-&nbsp;           logging.warning("No tradable accounts found.")
+&nbsp;               print(f"< Received event: {data\['event\_type']}")
 
-&nbsp;           return
+&nbsp;               print(json.dumps(data\['data'], indent=2))
 
+&nbsp;           except websockets.ConnectionClosed:
 
+&nbsp;               print("Connection closed.")
 
-&nbsp;       logging.info(f"Found {len(accounts)} tradable account(s):")
-
-&nbsp;       for acc in accounts:
-
-&nbsp;           print("\\n--- Generic Account Model ---")
-
-&nbsp;           # The output is a clean, generic Pydantic model
-
-&nbsp;           print(acc.model\_dump\_json(indent=2))
-
-
-
-&nbsp;   except TradeForgeError as e:
-
-&nbsp;       logging.error(f"An error occurred: {e}", exc\_info=True)
-
-&nbsp;   finally:
-
-&nbsp;       if provider:
-
-&nbsp;           await provider.disconnect()
-
-&nbsp;           logging.info("Provider disconnected.")
+&nbsp;               break
 
 
 
 if \_\_name\_\_ == "\_\_main\_\_":
 
-&nbsp;   asyncio.run(main())
+&nbsp;   asyncio.run(stream\_client())
 
 
 
-Advanced Usage: Real-Time Streams
+📋 Project Status \& Known Limitations
 
 
 
-This example shows how to subscribe to real-time market and user data streams.
+The library is feature-complete and stable for all documented API features of the TopStepX provider. The resilience of the real-time stream has been implemented and tested.
 
 
 
-import asyncio
+Disabled Features
 
-import logging
 
-import sys
 
+During development and testing, the following advanced order types were found to be unreliable or buggy at the provider API level. To ensure user safety and prevent financial risk, they have been intentionally disabled in this library:
 
 
-from tradeforgepy.providers.topstepx import TopStepXProvider
 
-from tradeforgepy.core.models\_generic import GenericStreamEvent
+Bracket (OCO) Orders: The provider API lacks a reliable mechanism to cancel the entire order group atomically, creating a risk of orphaned child orders remaining active on the market.
 
-from tradeforgepy.core.enums import MarketDataType, UserDataType, StreamConnectionStatus
 
-from tradeforgepy.config import settings # For easily accessing test settings
 
-from tradeforgepy.exceptions import TradeForgeError
+Trailing Stop Orders: The provider API for this order type was found to be non-functional due to a persistent server-side bug in how it processes the trailing value.
 
 
 
-\# Setup logging
+These features will not be enabled until the underlying provider API is confirmed to be stable and reliable.
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-logger = logging.getLogger(\_\_name\_\_)
 
+🛣️ Future Work \& Roadmap
 
 
-async def run\_stream\_example():
 
-&nbsp;   """
+The following items are planned for the future development of TradeForgePy:
 
-&nbsp;   Connects to the TopStepX real-time streams and prints incoming events.
 
-&nbsp;   """
 
-&nbsp;   provider = TopStepXProvider() # Loads config from .env
+Comprehensive Test Suite: Build out a full pytest suite with unit and integration tests to ensure long-term stability and prevent regressions.
 
 
 
-&nbsp;   # 1. Define your event handlers
+Generic Configuration: Refactor the configuration system to be fully provider-agnostic, allowing for easy management of credentials for multiple providers.
 
-&nbsp;   async def on\_event\_received(event: GenericStreamEvent):
 
-&nbsp;       logger.info(f"EVENT: {event.event\_type.value}")
 
-&nbsp;       print(event.model\_dump\_json(indent=2))
+Implement a New Provider: Add a second provider (e.g., for a crypto or stock brokerage) to validate the generic architecture and demonstrate the library's extensibility.
 
 
 
-&nbsp;   async def on\_status\_changed(status: StreamConnectionStatus, reason: str):
+Add Helper Methods: Introduce higher-level, user-friendly methods to the provider classes (e.g., caching, symbol-based contract lookups) to improve ease of use.
 
-&nbsp;       logger.info(f"STATUS -> {status.value}. Reason: {reason}")
 
 
+🤝 Contributing
 
-&nbsp;   async def on\_error\_received(error: Exception):
 
-&nbsp;       logger.error(f"STREAM ERROR: {error}", exc\_info=True)
 
+Contributions are welcome! Please feel free to open an issue to report a bug or suggest a feature. If you would like to contribute code, please open an issue first to discuss the proposed changes.
 
 
-&nbsp;   try:
 
-&nbsp;       # 2. Register handlers with the provider
+📜 License
 
-&nbsp;       provider.on\_event(on\_event\_received)
 
-&nbsp;       provider.on\_status\_change(on\_status\_changed)
 
-&nbsp;       provider.on\_error(on\_error\_received)
-
-
-
-&nbsp;       # 3. Connect the underlying HTTP client (for auth)
-
-&nbsp;       await provider.connect()
-
-
-
-&nbsp;       # 4. Subscribe to desired data streams
-
-&nbsp;       account\_id = settings.TS\_CAPTURE\_ACCOUNT\_ID
-
-&nbsp;       contract\_id = settings.TS\_CAPTURE\_CONTRACT\_ID
-
-&nbsp;       
-
-&nbsp;       logger.info(f"Subscribing to Market Data for {contract\_id}...")
-
-&nbsp;       await provider.subscribe\_market\_data(
-
-&nbsp;           provider\_contract\_ids=\[contract\_id],
-
-&nbsp;           data\_types=\[MarketDataType.QUOTE, MarketDataType.DEPTH]
-
-&nbsp;       )
-
-
-
-&nbsp;       logger.info(f"Subscribing to User Data for Account {account\_id}...")
-
-&nbsp;       await provider.subscribe\_user\_data(
-
-&nbsp;           provider\_account\_ids=\[account\_id],
-
-&nbsp;           data\_types=\[UserDataType.ACCOUNT\_UPDATE, UserDataType.ORDER\_UPDATE]
-
-&nbsp;       )
-
-
-
-&nbsp;       # 5. Run forever to process messages
-
-&nbsp;       logger.info("Starting stream... Press Ctrl+C to stop.")
-
-&nbsp;       await provider.run\_forever()
-
-
-
-&nbsp;   except TradeForgeError as e:
-
-&nbsp;       logger.error(f"A library error occurred: {e}")
-
-&nbsp;   except asyncio.CancelledError:
-
-&nbsp;       logger.info("Main task cancelled.")
-
-&nbsp;   finally:
-
-&nbsp;       logger.info("Disconnecting provider...")
-
-&nbsp;       await provider.disconnect()
-
-
-
-if \_\_name\_\_ == "\_\_main\_\_":
-
-&nbsp;   if sys.platform == "win32":
-
-&nbsp;       asyncio.set\_event\_loop\_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-&nbsp;   try:
-
-&nbsp;       asyncio.run(run\_stream\_example())
-
-&nbsp;   except KeyboardInterrupt:
-
-&nbsp;       logger.info("Script stopped by user.")
-
-&nbsp;
-
-Architectural Overview
-
-
-
-The library is designed in layers to maximize code reuse and maintainability. The flow of information for a typical REST API call is as follows:
-
-
-
-sequenceDiagram
-
-&nbsp;   participant User as User Code
-
-&nbsp;   participant Provider as TopStepXProvider
-
-&nbsp;   participant Client as TopStepXHttpClient
-
-&nbsp;   participant Mapper as providers/topstepx/mapper.py
-
-&nbsp;   participant API as TopStepX API
-
-
-
-&nbsp;   User->>+Provider: await get\_accounts()
-
-&nbsp;   Provider->>+Client: await ts\_get\_accounts()
-
-&nbsp;   Client->>+API: POST /api/Account/search
-
-&nbsp;   API-->>-Client: JSON Response
-
-&nbsp;   Client-->>-Provider: Returns TSAccountSearchResponse (Pydantic Model)
-
-&nbsp;   Provider->>+Mapper: map\_ts\_accounts\_to\_generic(response)
-
-&nbsp;   Mapper-->>-Provider: Returns List\[GenericAccount]
-
-&nbsp;   Provider-->>-User: Returns List\[GenericAccount]
-
-
-
-tradeforgepy/core/: The public-facing part of the library. It contains:
-
-
-
-interfaces.py: Abstract Base Classes (TradingPlatformAPI, RealTimeStream) that define the required methods for any provider.
-
-
-
-models\_generic.py: The provider-agnostic Pydantic models (Account, Order, Trade, etc.) that are consumed by the end-user.
-
-
-
-enums.py: A comprehensive set of generic enums (OrderSide, OrderStatus, etc.).
-
-
-
-tradeforgepy/providers/topstepx/: A self-contained implementation for the TopStepX platform.
-
-
-
-provider.py: The main TopStepXProvider class that implements the core interfaces.
-
-
-
-client.py: A low-level TopStepXHttpClient that handles authentication, token management, and all direct HTTP requests to the API. It returns provider-specific Pydantic models.
-
-
-
-streams.py: Internal handlers for managing the SignalR WebSocket connections.
-
-
-
-mapper.py: The crucial "translation layer" that maps data between the provider-specific models and the generic core models.
-
-
-
-schemas\_ts.py: Pydantic models that exactly match the JSON request/response schemas of the TopStepX API, generated from their OpenAPI specification.
-
-
-
-Contributing
-
-
-
-Contributions are welcome! This project is in its early stages, and there is much to do. Please follow this general workflow:
-
-
-
-Fork the repository.
-
-
-
-Create a new feature branch (git checkout -b feature/your-feature-name).
-
-
-
-Make your changes. Please adhere to the existing architecture.
-
-
-
-Add or update tests for your changes.
-
-
-
-Ensure your code passes linting and type-checking (black, isort, mypy).
-
-
-
-Submit a pull request with a clear description of your changes.
-
-
-
-Roadmap
-
-
-
-Phase 1: Finalize Streaming
-
-
-
-Capture live data for GatewayUserOrder, GatewayUserTrade, and GatewayUserPosition.
-
-
-
-Implement the final stream event mappers in mapper.py.
-
-
-
-Add comprehensive tests for the streaming functionality.
-
-
-
-Phase 2: Build FastAPI Service
-
-
-
-Expose TradingPlatformAPI methods via REST endpoints.
-
-
-
-Expose RealTimeStream functionality via WebSocket endpoints.
-
-
-
-Implement authentication for the service.
-
-
-
-Phase 3: Add New Providers
-
-
-
-Implement a provider for a crypto exchange (e.g., Bybit, Binance).
-
-
-
-Implement a provider for another futures platform (e.g., Tradovate).
-
-
-
-License
-
-
-
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.s
 
