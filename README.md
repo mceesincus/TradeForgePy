@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 Of course. Based on our entire development and a full understanding of the project's current state, here is a comprehensive, updated README.md file.
 
 
 
 This README serves as the primary entry point for new developers, explaining the project's purpose, architecture, how to get started, and its current status, including its known limitations.
+=======
+TradeForgePy - A Generic, Asynchronous Trading API Library
+>>>>>>> 5a09685bd404231a3f59ccb861dcd5b17842c0fb
 
 
 
