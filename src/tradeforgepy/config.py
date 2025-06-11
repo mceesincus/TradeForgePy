@@ -3,26 +3,27 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal, Optional
 from pathlib import Path
 
-# --- Robust .env file discovery ---
-# This logic finds the project root directory (which contains the 'src' folder)
-# and constructs an absolute path to the .env file. This makes the settings
-# load correctly regardless of where the script is run from.
-try:
-    # Path to this config.py file
-    _current_file_path = Path(__file__).resolve()
-    # Go up directories until we find the project root (assumed to be parent of 'src')
-    _project_root = _current_file_path.parent.parent.parent
-    _env_path = _project_root / '.env'
+def _find_dotenv() -> Optional[Path]:
+    """
+    Find the .env file by searching upward from the current file's location.
     
-    if not _env_path.exists():
-        # Fallback for when the package might be installed and not in a 'src' layout
-        _project_root = Path.cwd()
-        _env_path = _project_root / '.env'
-
-except Exception:
-    # If path logic fails for any reason, default to the current working directory
-    _env_path = Path.cwd() / '.env'
-
+    This robust method ensures that settings are loaded correctly for both:
+    1. Development: Running scripts from anywhere within the project (e.g., /examples).
+    2. Installed Package: When the library is installed via pip and used in another project.
+    """
+    # Start from this file's directory and search in parent directories
+    for directory in [Path(__file__).resolve().parent] + list(Path(__file__).resolve().parents):
+        potential_path = directory / '.env'
+        if potential_path.is_file():
+            return potential_path
+            
+    # As a final fallback for unusual execution contexts, check the current working directory.
+    # This is crucial for when the package is installed and a user runs their script.
+    cwd_path = Path.cwd() / '.env'
+    if cwd_path.is_file():
+        return cwd_path
+        
+    return None
 
 class Settings(BaseSettings):
     """
@@ -34,7 +35,7 @@ class Settings(BaseSettings):
     - TS_CAPTURE_ACCOUNT_ID: Default account ID for the data capture script.
     """
     model_config = SettingsConfigDict(
-        env_file=_env_path,         # Use the absolute path we discovered
+        env_file=_find_dotenv(),    # Use the robust discovery function
         env_file_encoding='utf-8',
         case_sensitive=True,
         extra='ignore'              # Ignore extra variables from the old .env file
