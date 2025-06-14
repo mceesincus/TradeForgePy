@@ -44,6 +44,13 @@ class TradingPlatformAPI(ABC):
         pass
 
     @abstractmethod
+    async def get_contract_by_symbol(self, symbol: str) -> Optional[Contract]:
+        """
+        A quality-of-life helper to find a single contract by its common trading symbol.
+        """
+        pass
+
+    @abstractmethod
     async def get_historical_bars(self, request: HistoricalBarsRequest) -> HistoricalBarsResponse:
         pass
 
@@ -97,7 +104,8 @@ class TradingPlatformAPI(ABC):
                                 provider_contract_id: Optional[str] = None,
                                 start_time_utc: Optional[datetime] = None,
                                 end_time_utc: Optional[datetime] = None,
-                                limit: Optional[int] = None
+                                limit: Optional[int] = None,
+                                days_to_search: Optional[int] = None
                                ) -> List[Trade]:
         pass
 

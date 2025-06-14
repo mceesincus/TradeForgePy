@@ -159,6 +159,25 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             
         raise NotFoundError(f"Contract with provider_id '{provider_contract_id}' not found on TopStepX.")
 
+    async def get_contract_by_symbol(self, symbol: str) -> Optional[GenericContract]:
+        if not self._is_connected_http: await self.connect()
+        
+        search_results = await self.search_contracts(search_text=symbol)
+        
+        exact_matches = [
+            c for c in search_results if c.symbol.upper() == symbol.upper()
+        ]
+        
+        if len(exact_matches) == 1:
+            # Found one unique match, get its full details (which will use the cache)
+            return await self.get_contract_details(exact_matches[0].provider_contract_id)
+        elif len(exact_matches) > 1:
+            logger.warning(f"Ambiguous symbol '{symbol}': found {len(exact_matches)} exact matches. Returning None.")
+            return None
+        else:
+            logger.info(f"Could not find an exact match for symbol '{symbol}'.")
+            return None
+
     async def get_historical_bars(self, request: GenericHistoricalBarsRequest) -> GenericHistoricalBarsResponse:
         if not self._is_connected_http: await self.connect()
         ts_unit = mapper.map_generic_bar_unit_to_ts(request.timeframe_unit)
@@ -331,10 +350,25 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             provider_name=self.provider_name
         )
 
-    async def get_trade_history(self, provider_account_id: Union[str, int], provider_contract_id: Optional[str] = None, start_time_utc: Optional[datetime] = None, end_time_utc: Optional[datetime] = None, limit: Optional[int] = None) -> List[GenericTrade]:
+    async def get_trade_history(self,
+                                provider_account_id: Union[str, int],
+                                provider_contract_id: Optional[str] = None,
+                                start_time_utc: Optional[datetime] = None,
+                                end_time_utc: Optional[datetime] = None,
+                                limit: Optional[int] = None,
+                                days_to_search: Optional[int] = 7
+                               ) -> List[GenericTrade]:
         if not self._is_connected_http: await self.connect()
+
         _end = end_time_utc or datetime.now(UTC_TZ)
-        _start = start_time_utc or (_end - timedelta(days=7))
+        
+        # Prioritize explicit start_time_utc if provided
+        if start_time_utc:
+            _start = start_time_utc
+        else:
+            # Otherwise, use days_to_search
+            _start = _end - timedelta(days=days_to_search)
+
         search_req = TSSearchTradeRequest(
             accountId=int(provider_account_id), 
             startTimestamp=_start.isoformat(), 
