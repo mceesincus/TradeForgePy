@@ -52,7 +52,7 @@ class TradingPlatformAPI(ABC):
         pass
     
     @abstractmethod
-    async def cancel_order(self, provider_account_id: str, provider_order_id: str) -> GenericCancellationResponse:
+    async def cancel_order(self, provider_account_id: Union[str, int], provider_order_id: Union[str, int]) -> GenericCancellationResponse:
         pass
 
     @abstractmethod
@@ -60,16 +60,16 @@ class TradingPlatformAPI(ABC):
         pass
 
     @abstractmethod
-    async def get_order_by_id(self, provider_account_id: str, provider_order_id: str) -> Optional[Order]:
+    async def get_order_by_id(self, provider_account_id: Union[str, int], provider_order_id: Union[str, int], days_to_search: Optional[int] = None) -> Optional[Order]:
         pass
 
     @abstractmethod
-    async def get_open_orders(self, provider_account_id: str, provider_contract_id: Optional[str] = None) -> List[Order]:
+    async def get_open_orders(self, provider_account_id: Union[str, int], provider_contract_id: Optional[str] = None) -> List[Order]:
         pass
     
     @abstractmethod
     async def get_order_history(self,
-                                provider_account_id: str,
+                                provider_account_id: Union[str, int],
                                 start_time_utc: datetime,
                                 end_time_utc: datetime,
                                 provider_contract_id: Optional[str] = None
@@ -80,12 +80,12 @@ class TradingPlatformAPI(ABC):
         pass
 
     @abstractmethod
-    async def get_positions(self, provider_account_id: str) -> List[Position]:
+    async def get_positions(self, provider_account_id: Union[str, int]) -> List[Position]:
         pass
 
     @abstractmethod
     async def close_position(self,
-                             provider_account_id: str,
+                             provider_account_id: Union[str, int],
                              provider_contract_id: str,
                              size_to_close: Optional[float] = None
                             ) -> OrderPlacementResponse: # Closing results in an order
@@ -93,7 +93,7 @@ class TradingPlatformAPI(ABC):
 
     @abstractmethod
     async def get_trade_history(self,
-                                provider_account_id: str,
+                                provider_account_id: Union[str, int],
                                 provider_contract_id: Optional[str] = None,
                                 start_time_utc: Optional[datetime] = None,
                                 end_time_utc: Optional[datetime] = None,

@@ -17,6 +17,8 @@ InternalStatusChangeCallback = Callable[[str, StreamConnectionStatus, Optional[s
 InternalErrorCallback = Callable[[str, Exception], Awaitable[None]]
 
 class _BaseTopStepXStream:
+    _MAX_CONSECUTIVE_AUTH_FAILURES = 3
+
     def __init__(self, hub_url: str, initial_token: str, event_callback: InternalGenericEventCallback, 
                  status_callback: InternalStatusChangeCallback, error_callback: InternalErrorCallback, stream_name: str):
         self._raw_hub_url = hub_url
@@ -33,6 +35,7 @@ class _BaseTopStepXStream:
         # --- Resilience Parameters ---
         self._reconnect_delay_sec = 2.0
         self._max_reconnect_delay_sec = 60.0
+        self._consecutive_auth_failures = 0
         
         logger.info(f"BaseTopStepXStream '{self.stream_name}' initialized for URL: {self._raw_hub_url}")
 
@@ -49,9 +52,10 @@ class _BaseTopStepXStream:
 
     async def _on_open_and_subscribe(self):
         await self._update_status(StreamConnectionStatus.CONNECTED, "SignalR connection established")
-        # Reset reconnect delay on successful connection
+        # Reset counters on successful connection
         self._reconnect_delay_sec = 2.0
-        logger.info(f"{self.stream_name} connection successful. Reconnect delay reset to {self._reconnect_delay_sec}s.")
+        self._consecutive_auth_failures = 0
+        logger.info(f"{self.stream_name} connection successful. Resilience counters reset.")
         await self._send_pending_subscriptions()
 
     async def _pysignalr_on_close(self):
@@ -74,24 +78,50 @@ class _BaseTopStepXStream:
                 # This will block until the connection session ends for any reason.
                 await self._run_single_session()
 
+                # If the session completes without an exception, any failure chain is broken.
+                self._consecutive_auth_failures = 0
+
                 if self._is_manually_stopping:
                     logger.info(f"'{self.stream_name}' resilient loop stopped manually.")
                     break
                 
+                # Backoff logic for a normal disconnect
                 logger.warning(f"'{self.stream_name}' session ended. Attempting reconnect in {self._reconnect_delay_sec:.1f}s...")
                 await asyncio.sleep(self._reconnect_delay_sec)
-                
-                # Apply exponential backoff
                 self._reconnect_delay_sec = min(self._reconnect_delay_sec * 2, self._max_reconnect_delay_sec)
+
+            except AuthenticationError as e:
+                self._consecutive_auth_failures += 1
+                logger.error(f"Authentication failure #{self._consecutive_auth_failures} for '{self.stream_name}': {e}")
+                await self.error_callback(self.stream_name, e)
+
+                if self._consecutive_auth_failures >= self._MAX_CONSECUTIVE_AUTH_FAILURES:
+                    final_msg = "Too many consecutive authentication failures."
+                    logger.critical(
+                        f"'{self.stream_name}' has failed authentication {self._consecutive_auth_failures} times. "
+                        f"Stopping reconnects. Reason: {final_msg}"
+                    )
+                    await self._update_status(StreamConnectionStatus.ERROR, final_msg)
+                    self._is_manually_stopping = True  # Break the loop permanently
+                else:
+                    # Still within threshold, apply backoff and retry
+                    logger.warning(f"Attempting reconnect after auth failure in {self._reconnect_delay_sec:.1f}s...")
+                    await asyncio.sleep(self._reconnect_delay_sec)
+                    self._reconnect_delay_sec = min(self._reconnect_delay_sec * 2, self._max_reconnect_delay_sec)
             
             except asyncio.CancelledError:
                 logger.info(f"'{self.stream_name}' resilient run task was cancelled.")
                 self._is_manually_stopping = True # Ensure loop terminates
 
             except Exception as e:
-                logger.error(f"Critical error in '{self.stream_name}' resilient loop: {e}", exc_info=True)
-                self._is_manually_stopping = True # Stop on unknown critical errors
+                # Any other exception is treated as transient and does not increment the auth failure counter.
+                logger.error(f"A transient error occurred in '{self.stream_name}' resilient loop: {e}", exc_info=True)
                 await self.error_callback(self.stream_name, e)
+                
+                # Apply backoff and retry
+                logger.warning(f"Attempting reconnect after transient error in {self._reconnect_delay_sec:.1f}s...")
+                await asyncio.sleep(self._reconnect_delay_sec)
+                self._reconnect_delay_sec = min(self._reconnect_delay_sec * 2, self._max_reconnect_delay_sec)
 
 
     async def _run_single_session(self):
@@ -104,8 +134,7 @@ class _BaseTopStepXStream:
         if not self._current_token:
             err = AuthenticationError("Cannot start stream: token is missing.")
             await self._update_status(StreamConnectionStatus.ERROR, err.args[0])
-            await self.error_callback(self.stream_name, err)
-            # Raise to allow the resilient loop to handle backoff
+            # Do not call self.error_callback here, as raising will do it in run_forever
             raise err
 
         hub_url_with_token = self._build_url_with_token()
@@ -117,13 +146,15 @@ class _BaseTopStepXStream:
         
         try:
             logger.info(f"'{self.stream_name}' starting new connection session...")
+            # PysignalR's run() method can raise exceptions on connection failure.
+            # These are caught by the run_forever loop.
             self._session_task = asyncio.create_task(self.connection.run(), name=f"{self.stream_name}_Session")
             await self._session_task
         except asyncio.CancelledError:
             logger.info(f"'{self.stream_name}' session task cancelled.")
         except Exception as e:
-            await self._update_status(StreamConnectionStatus.ERROR, f"Session run error: {type(e).__name__}")
-            await self.error_callback(self.stream_name, e)
+            # Re-raising allows the resilient loop to handle all exceptions uniformly.
+            raise e
         finally:
             self._session_task = None
             if not self._is_manually_stopping:
@@ -136,6 +167,12 @@ class _BaseTopStepXStream:
 
         if self._session_task and not self._session_task.done():
             self._session_task.cancel()
+        
+        # Also cancel any supervised handler tasks that might be running
+        if hasattr(self, '_handler_tasks') and isinstance(self._handler_tasks, set):
+            # Create a list from the set to avoid issues with changing set size during iteration
+            for task in list(self._handler_tasks):
+                task.cancel()
         
         # Explicitly stop the connection if it exists
         if self.connection:
@@ -158,10 +195,10 @@ class _BaseTopStepXStream:
             await self._update_status(StreamConnectionStatus.ERROR, f"Subscription failed for {method}"); await self.error_callback(self.stream_name, e); return False
 
 class TopStepXMarketStreamInternal(_BaseTopStepXStream):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, mapper: Any, **kwargs):
         super().__init__(*args, **kwargs)
         self.pending_subscriptions: Dict[str, Set[MarketDataType]] = {}
-        self.mapper = None
+        self.mapper = mapper
         self._subscription_lock = asyncio.Lock()
 
     def _register_specific_handlers(self):
@@ -176,13 +213,18 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
             pending_items = list(self.pending_subscriptions.items())
         
         for contract_id, data_types in pending_items:
-            if MarketDataType.QUOTE in data_types: await self._invoke_subscription_command("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}")
-            if MarketDataType.DEPTH in data_types: await self._invoke_subscription_command("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}")
+            if MarketDataType.QUOTE in data_types:
+                await self._invoke_subscription_command("SubscribeContractQuotes", [contract_id], f"Quotes for {contract_id}")
+            if MarketDataType.DEPTH in data_types:
+                await self._invoke_subscription_command("SubscribeContractMarketDepth", [contract_id], f"Depth for {contract_id}")
+            if MarketDataType.TRADE in data_types:
+                await self._invoke_subscription_command("SubscribeContractTrades", [contract_id], f"Trades for {contract_id}")
 
     async def subscribe_contract(self, contract_id: str, data_types: List[MarketDataType]):
         async with self._subscription_lock:
-            if contract_id not in self.pending_subscriptions: self.pending_subscriptions[contract_id] = set()
-            self.pending_subscriptions[contract_id].update(dt for dt in data_types if dt != MarketDataType.TRADE) # TRADE is implicit
+            if contract_id not in self.pending_subscriptions:
+                self.pending_subscriptions[contract_id] = set()
+            self.pending_subscriptions[contract_id].update(data_types)
         
         if self.current_status == StreamConnectionStatus.CONNECTED:
             await self._send_pending_subscriptions()
@@ -200,6 +242,8 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
                     command = "UnsubscribeContractQuotes"
                 elif data_type == MarketDataType.DEPTH:
                     command = "UnsubscribeContractMarketDepth"
+                elif data_type == MarketDataType.TRADE:
+                    command = "UnsubscribeContractTrades"
                 
                 if command:
                     if data_type in self.pending_subscriptions.get(contract_id, set()):
@@ -234,19 +278,63 @@ class TopStepXMarketStreamInternal(_BaseTopStepXStream):
             if event: await self.event_callback(event)
 
 class TopStepXUserStreamInternal(_BaseTopStepXStream):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, mapper: Any, **kwargs):
         super().__init__(*args, **kwargs)
         self.pending_account_subscriptions: Dict[str, Set[UserDataType]] = {}
         self.pending_global_subscription = False
-        self.mapper = None
+        self.mapper = mapper
         self._subscription_lock = asyncio.Lock()
+        self._handler_tasks: Set[asyncio.Task] = set()
+
+    async def _launch_and_supervise_handler(self, coro: Awaitable[None]):
+        """
+        Creates, runs, and supervises a background task for a specific event handler.
+        If the handler task fails with an exception, it logs the error and
+        triggers a cancellation of the main stream session to force a reconnect.
+        """
+        try:
+            # Create a task to run the actual handler logic (e.g., mapping data).
+            task = asyncio.create_task(coro)
+            # Add the task to our tracking set for cleanup during disconnect.
+            self._handler_tasks.add(task)
+            # When the task is done (completes or fails), remove it from the set.
+            task.add_done_callback(self._handler_tasks.discard)
+            
+            # Await the task. This is the key part that allows us to catch its exception.
+            await task
+        except asyncio.CancelledError:
+            # Don't treat cancellation as a critical failure.
+            pass
+        except Exception as e:
+            # An unhandled exception occurred within the handler coroutine.
+            # This is a critical failure for this stream.
+            logger.error(f"Unhandled exception in stream handler task for '{self.stream_name}': {e}", exc_info=True)
+            # Report the specific error via the main error callback.
+            await self.error_callback(self.stream_name, e)
+            
+            # Trigger a full, clean reconnect by cancelling the main session task.
+            # This prevents the stream from continuing in a broken, partial state.
+            if self._session_task and not self._session_task.done():
+                logger.warning(f"Cancelling main stream session for '{self.stream_name}' due to handler task failure.")
+                self._session_task.cancel()
 
     def _register_specific_handlers(self):
         if not self.connection: return
-        self.connection.on("GatewayUserOrder", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_order_update_to_generic_event")))
-        self.connection.on("GatewayUserPosition", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_position_update_to_generic_event")))
-        self.connection.on("GatewayUserAccount", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_account_update_to_generic_event")))
-        self.connection.on("GatewayUserTrade", lambda args: asyncio.create_task(self._handle_generic_user_event(args, "map_ts_user_trade_to_generic_event")))
+
+        # This helper function ensures that our supervisor itself is launched
+        # in the background, allowing the `on` registration to complete instantly.
+        def create_supervised_task(handler_coro: Awaitable[None]):
+            asyncio.create_task(self._launch_and_supervise_handler(handler_coro))
+        
+        # Replace the direct "fire-and-forget" task creation with our supervised version.
+        self.connection.on("GatewayUserOrder", 
+            lambda args: create_supervised_task(self._handle_generic_user_event(args, "map_ts_order_update_to_generic_event")))
+        self.connection.on("GatewayUserPosition", 
+            lambda args: create_supervised_task(self._handle_generic_user_event(args, "map_ts_position_update_to_generic_event")))
+        self.connection.on("GatewayUserAccount", 
+            lambda args: create_supervised_task(self._handle_generic_user_event(args, "map_ts_account_update_to_generic_event")))
+        self.connection.on("GatewayUserTrade", 
+            lambda args: create_supervised_task(self._handle_generic_user_event(args, "map_ts_user_trade_to_generic_event")))
 
     async def _send_pending_subscriptions(self):
         async with self._subscription_lock:

@@ -2,7 +2,7 @@
 import logging
 import os
 import asyncio
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -46,7 +46,8 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
 
     def __init__(self, username: Optional[str] = None, api_key: Optional[str] = None,
                  environment: Optional[str] = None,
-                 connect_timeout: float = 10.0, read_timeout: float = 30.0):
+                 connect_timeout: float = 10.0, read_timeout: float = 30.0,
+                 cache_ttl_seconds: int = 300):
         
         _username = username or settings.TS_USERNAME
         _api_key = api_key or settings.TS_API_KEY
@@ -70,6 +71,11 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
         
         self._run_forever_task: Optional[asyncio.Task] = None
 
+        # Caching mechanism
+        self.cache_ttl = timedelta(seconds=cache_ttl_seconds)
+        self._accounts_cache: Dict[str, Any] = {}
+        self._contract_details_cache: Dict[str, Any] = {}
+
         logger.info(f"TopStepXProvider initialized for environment: {self.environment}")
 
     async def connect(self) -> None:
@@ -78,6 +84,9 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
                 await self.http_client._authenticate()
                 self._is_connected_http = True
                 logger.info("TopStepXProvider HTTP client connected and authenticated successfully.")
+                # Eagerly initialize stream handlers as part of the connection process.
+                await self._init_stream_handlers_if_needed()
+                logger.info("Stream handlers initialized.")
             except Exception as e:
                 self._is_connected_http = False
                 logger.error(f"TopStepXProvider HTTP connection/authentication failed: {e}")
@@ -99,16 +108,33 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             disconnect_tasks.append(self.user_stream_handler.disconnect())
         
         if disconnect_tasks:
-            await asyncio.gather(*disconnect_tasks, return_exceptions=True)
+            results = await asyncio.gather(*disconnect_tasks, return_exceptions=True)
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    stream_name = disconnect_tasks[i].__self__.stream_name
+                    logger.warning(f"Error while disconnecting stream '{stream_name}': {result}")
 
         await self.http_client.close_http_client()
         self._is_connected_http = False
         logger.info("TopStepXProvider disconnected.")
 
     async def get_accounts(self) -> List[GenericAccount]:
+        cache_key = "all_accounts"
+        cached_item = self._accounts_cache.get(cache_key)
+        
+        if cached_item and (datetime.now(UTC_TZ) < cached_item['timestamp'] + self.cache_ttl):
+            logger.debug("Returning accounts from cache.")
+            return cached_item['data']
+
         if not self._is_connected_http: await self.connect()
         ts_response = await self.http_client.ts_get_accounts(only_active=True)
-        return mapper.map_ts_accounts_to_generic(ts_response.accounts, self.provider_name)
+        
+        accounts = mapper.map_ts_accounts_to_generic(ts_response.accounts, self.provider_name)
+        
+        self._accounts_cache[cache_key] = {'data': accounts, 'timestamp': datetime.now(UTC_TZ)}
+        logger.debug("Fetched and cached accounts.")
+        
+        return accounts
 
     async def search_contracts(self, search_text: str, asset_class: Optional[AssetClass] = None) -> List[GenericContract]:
         if not self._is_connected_http: await self.connect()
@@ -116,10 +142,21 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
         return mapper.map_ts_contracts_to_generic(ts_response.contracts, self.provider_name)
 
     async def get_contract_details(self, provider_contract_id: str) -> Optional[GenericContract]:
+        cached_item = self._contract_details_cache.get(provider_contract_id)
+        
+        if cached_item and (datetime.now(UTC_TZ) < cached_item['timestamp'] + self.cache_ttl):
+            logger.debug(f"Returning contract details for '{provider_contract_id}' from cache.")
+            return cached_item['data']
+
         if not self._is_connected_http: await self.connect()
         ts_response = await self.http_client.ts_get_contract_by_id(contract_id=provider_contract_id)
+        
         if ts_response.contract:
-            return mapper.map_ts_contract_to_generic(ts_response.contract, self.provider_name)
+            contract = mapper.map_ts_contract_to_generic(ts_response.contract, self.provider_name)
+            self._contract_details_cache[provider_contract_id] = {'data': contract, 'timestamp': datetime.now(UTC_TZ)}
+            logger.debug(f"Fetched and cached contract details for '{provider_contract_id}'.")
+            return contract
+            
         raise NotFoundError(f"Contract with provider_id '{provider_contract_id}' not found on TopStepX.")
 
     async def get_historical_bars(self, request: GenericHistoricalBarsRequest) -> GenericHistoricalBarsResponse:
@@ -175,7 +212,7 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             logger.error(f"Error placing TopStepX order: {e}")
             return GenericOrderPlacementResponse(order_id_acknowledged=False, message=str(e), provider_name=self.provider_name)
 
-    async def cancel_order(self, provider_account_id: str, provider_order_id: str) -> GenericCancellationResponse:
+    async def cancel_order(self, provider_account_id: Union[str, int], provider_order_id: Union[str, int]) -> GenericCancellationResponse:
         if not self._is_connected_http: await self.connect()
         acc_id, ord_id = int(provider_account_id), int(provider_order_id)
         ts_response = await self.http_client.ts_cancel_order(account_id=acc_id, order_id=ord_id)
@@ -205,18 +242,50 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             provider_specific_data=ts_response.model_dump(exclude_none=True)
         )
 
-    async def get_order_by_id(self, provider_account_id: str, provider_order_id: str) -> Optional[GenericOrder]:
+    async def get_order_by_id(self, provider_account_id: Union[str, int], provider_order_id: Union[str, int], days_to_search: Optional[int] = None) -> Optional[GenericOrder]:
+        """
+        WARNING: This method is inefficient and may be slow.
+
+        The TopStepX API does not provide a direct endpoint to look up a single
+        order by its ID. This method simulates this functionality by fetching
+        order history over a specified time window and filtering the results
+        in-memory.
+
+        Args:
+            provider_account_id: The provider-specific ID of the account.
+            provider_order_id: The provider-specific ID of the order to find.
+            days_to_search: The number of past days to search for the order.
+                            If None, defaults to 7 days. Use a larger number for
+                            older orders, but be aware of the performance impact.
+
+        Returns:
+            The generic Order object if found, otherwise None.
+        """
         if not self._is_connected_http: await self.connect()
+        
         acc_id, ord_id = int(provider_account_id), int(provider_order_id)
-        end_time = datetime.now(UTC_TZ); start_time = end_time - timedelta(days=30)
-        search_req = TSSearchOrderRequest(accountId=acc_id, startTimestamp=start_time.isoformat(), endTimestamp=end_time.isoformat())
+        
+        # Determine the search window, defaulting to 7 days.
+        search_days = days_to_search if days_to_search is not None else 7
+        
+        end_time = datetime.now(UTC_TZ)
+        start_time = end_time - timedelta(days=search_days)
+        
+        search_req = TSSearchOrderRequest(
+            accountId=acc_id, 
+            startTimestamp=start_time.isoformat(), 
+            endTimestamp=end_time.isoformat()
+        )
+        
         ts_response = await self.http_client.ts_search_orders(search_req)
+        
         for ts_order in ts_response.orders:
             if ts_order.id == ord_id:
                 return mapper.map_ts_order_details_to_generic(ts_order, self.provider_name)
+                
         return None
 
-    async def get_open_orders(self, provider_account_id: str, provider_contract_id: Optional[str] = None) -> List[GenericOrder]:
+    async def get_open_orders(self, provider_account_id: Union[str, int], provider_contract_id: Optional[str] = None) -> List[GenericOrder]:
         if not self._is_connected_http: await self.connect()
         search_req = TSSearchOpenOrderRequest(accountId=int(provider_account_id))
         ts_response = await self.http_client.ts_search_open_orders(search_req)
@@ -226,7 +295,7 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
         return generic_orders
 
     async def get_order_history(self,
-                                provider_account_id: str,
+                                provider_account_id: Union[str, int],
                                 start_time_utc: datetime,
                                 end_time_utc: datetime,
                                 provider_contract_id: Optional[str] = None
@@ -243,12 +312,12 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             return [o for o in generic_orders if o.provider_contract_id == provider_contract_id]
         return generic_orders
 
-    async def get_positions(self, provider_account_id: str) -> List[GenericPosition]:
+    async def get_positions(self, provider_account_id: Union[str, int]) -> List[GenericPosition]:
         if not self._is_connected_http: await self.connect()
         ts_response = await self.http_client.ts_search_open_positions(int(provider_account_id))
         return mapper.map_ts_positions_to_generic(ts_response.positions, self.provider_name)
 
-    async def close_position(self, provider_account_id: str, provider_contract_id: str, size_to_close: Optional[float] = None) -> GenericOrderPlacementResponse:
+    async def close_position(self, provider_account_id: Union[str, int], provider_contract_id: str, size_to_close: Optional[float] = None) -> GenericOrderPlacementResponse:
         if not self._is_connected_http: await self.connect()
         acc_id = int(provider_account_id)
         if size_to_close is not None:
@@ -262,7 +331,7 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             provider_name=self.provider_name
         )
 
-    async def get_trade_history(self, provider_account_id: str, provider_contract_id: Optional[str] = None, start_time_utc: Optional[datetime] = None, end_time_utc: Optional[datetime] = None, limit: Optional[int] = None) -> List[GenericTrade]:
+    async def get_trade_history(self, provider_account_id: Union[str, int], provider_contract_id: Optional[str] = None, start_time_utc: Optional[datetime] = None, end_time_utc: Optional[datetime] = None, limit: Optional[int] = None) -> List[GenericTrade]:
         if not self._is_connected_http: await self.connect()
         _end = end_time_utc or datetime.now(UTC_TZ)
         _start = start_time_utc or (_end - timedelta(days=7))
@@ -301,17 +370,26 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
         user_hub_url = settings.TS_USER_HUB_LIVE if self.environment == 'LIVE' else settings.TS_USER_HUB_DEMO
         
         if self.market_stream_handler is None:
-            self.market_stream_handler = TopStepXMarketStreamInternal(hub_url=market_hub_url, initial_token=token, event_callback=self._internal_event_handler, status_callback=self._internal_status_handler, error_callback=self._internal_error_handler, stream_name="MarketStream")
-            self.market_stream_handler.mapper = mapper
+            self.market_stream_handler = TopStepXMarketStreamInternal(
+                hub_url=market_hub_url, initial_token=token, 
+                event_callback=self._internal_event_handler, status_callback=self._internal_status_handler, 
+                error_callback=self._internal_error_handler, stream_name="MarketStream",
+                mapper=mapper
+            )
         if self.user_stream_handler is None:
-            self.user_stream_handler = TopStepXUserStreamInternal(hub_url=user_hub_url, initial_token=token, event_callback=self._internal_event_handler, status_callback=self._internal_status_handler, error_callback=self._internal_error_handler, stream_name="UserStream")
-            self.user_stream_handler.mapper = mapper
+            self.user_stream_handler = TopStepXUserStreamInternal(
+                hub_url=user_hub_url, initial_token=token,
+                event_callback=self._internal_event_handler, status_callback=self._internal_status_handler,
+                error_callback=self._internal_error_handler, stream_name="UserStream",
+                mapper=mapper
+            )
 
     async def subscribe_market_data(self, provider_contract_ids: List[str], data_types: List[MarketDataType]):
-        if not self.market_stream_handler: await self._init_stream_handlers_if_needed()
-        if self.market_stream_handler:
-            for contract_id in provider_contract_ids: await self.market_stream_handler.subscribe_contract(contract_id, data_types)
-        else: raise TradeForgeConnectionError("Market stream handler not initialized.")
+        if not self.market_stream_handler:
+            raise TradeForgeConnectionError("Market stream handler not initialized. Ensure provider.connect() was called and succeeded.")
+        
+        for contract_id in provider_contract_ids:
+            await self.market_stream_handler.subscribe_contract(contract_id, data_types)
 
     async def unsubscribe_market_data(self, provider_contract_ids: List[str], data_types: List[MarketDataType]):
         if self.market_stream_handler:
@@ -321,12 +399,16 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             logger.warning("Cannot unsubscribe market data: market stream handler not initialized.")
 
     async def subscribe_user_data(self, provider_account_ids: List[str], data_types: List[UserDataType]):
-        if not self.user_stream_handler: await self._init_stream_handlers_if_needed()
-        if self.user_stream_handler:
-            if UserDataType.ACCOUNT_UPDATE in data_types: await self.user_stream_handler.subscribe_global_accounts()
-            specific_types = [dt for dt in data_types if dt != UserDataType.ACCOUNT_UPDATE]
-            if specific_types:
-                for acc_id in provider_account_ids: await self.user_stream_handler.subscribe_account(acc_id, specific_types)
+        if not self.user_stream_handler:
+            raise TradeForgeConnectionError("User stream handler not initialized. Ensure provider.connect() was called and succeeded.")
+
+        if UserDataType.ACCOUNT_UPDATE in data_types:
+            await self.user_stream_handler.subscribe_global_accounts()
+        
+        specific_types = [dt for dt in data_types if dt != UserDataType.ACCOUNT_UPDATE]
+        if specific_types:
+            for acc_id in provider_account_ids:
+                await self.user_stream_handler.subscribe_account(acc_id, specific_types)
 
     async def unsubscribe_user_data(self, provider_account_ids: List[str], data_types: List[UserDataType]):
         if self.user_stream_handler:
@@ -370,7 +452,6 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             await self._run_forever_task
             return
             
-        await self._init_stream_handlers_if_needed()
         tasks = []
         if self.market_stream_handler:
             tasks.append(self.market_stream_handler.run_forever())
@@ -378,7 +459,8 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
             tasks.append(self.user_stream_handler.run_forever())
             
         if not tasks:
-            logger.warning("run_forever called, but no streams configured to run. Idling.")
+            logger.warning("run_forever called, but no streams were initialized (is provider connected?). Idling.")
+            # This prevents a script from exiting immediately if run_forever is called before connect.
             await asyncio.Event().wait()
             return
             

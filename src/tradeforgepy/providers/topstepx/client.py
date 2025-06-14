@@ -37,6 +37,9 @@ class TopStepXHttpClient:
     It manages authentication, token lifecycle, and maps raw responses to
     TopStepX-specific Pydantic models defined in schemas_ts.py.
     """
+    _MAX_RETRIES = 3
+    _INITIAL_BACKOFF_SEC = 1.0
+
     def __init__(self, username: str, api_key: str, environment: str = "DEMO",
                  connect_timeout: float = 10.0, read_timeout: float = 30.0):
         if not username or not api_key:
@@ -117,33 +120,69 @@ class TopStepXHttpClient:
                        expected_response_model: Optional[type[BaseModel]] = None
                        ) -> Union[Dict[str, Any], BaseModel]:
         await self._ensure_valid_token()
-        if not self._token: raise AuthenticationError("Request attempted without a valid token.")
+        if not self._token:
+            raise AuthenticationError("Request attempted without a valid token.")
         
         headers = {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
         url = f"{self.base_url}{endpoint}"
-        try:
-            response = await self.async_client.request(method, url, headers=headers, content=content_payload)
-            if response.status_code == 401:
-                await self._authenticate()
-                headers["Authorization"] = f"Bearer {self._token}"
+        last_exception = None
+        backoff_sec = self._INITIAL_BACKOFF_SEC
+
+        for attempt in range(self._MAX_RETRIES):
+            try:
                 response = await self.async_client.request(method, url, headers=headers, content=content_payload)
+
+                if response.status_code == 401:
+                    logger.warning("Token expired or invalid (401). Re-authenticating and retrying once.")
+                    await self._authenticate()
+                    headers["Authorization"] = f"Bearer {self._token}"
+                    response = await self.async_client.request(method, url, headers=headers, content=content_payload)
+
+                # Retry on transient server errors (5xx)
+                if response.status_code >= 500:
+                    response.raise_for_status() # Will raise HTTPStatusError, caught below
+
+                # If we get here, status is likely 2xx or a non-retryable 4xx
+                response.raise_for_status()
+                response_data = response.json()
+
+                if isinstance(response_data, dict) and response_data.get("success") is False:
+                    err_msg = response_data.get("errorMessage", "Unknown API Error")
+                    err_code = response_data.get("errorCode")
+                    logger.error(f"TopStepX API reported failure at {endpoint}: {err_msg} (Code: {err_code})")
+                    raise OperationFailedError(err_msg, provider_error_code=err_code, provider_error_message=err_msg)
+
+                return expected_response_model.model_validate(response_data) if expected_response_model else response_data
+
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                # Check if it's a server error (5xx) or a transient request error
+                is_server_error = isinstance(e, httpx.HTTPStatusError) and e.response.status_code >= 500
+                is_transient_error = isinstance(e, httpx.RequestError)
+
+                if is_server_error or is_transient_error:
+                    last_exception = e
+                    logger.warning(
+                        f"Retryable HTTP error on attempt {attempt + 1}/{self._MAX_RETRIES} for {endpoint}: {e}. "
+                        f"Retrying in {backoff_sec:.1f}s..."
+                    )
+                    await asyncio.sleep(backoff_sec)
+                    backoff_sec *= 2  # Exponential backoff
+                    continue
+                else:
+                    # It's a non-retryable client error (4xx) or other status error
+                    raise TradeForgeConnectionError(f"HTTP error {e.response.status_code} on {endpoint}: {e.response.text[:200]}") from e
             
-            response.raise_for_status()
-            response_data = response.json()
+            except OperationFailedError:
+                raise # Do not retry on logical API failures (e.g., "Insufficient Funds")
+            
+            except Exception as e:
+                # Catch any other unexpected errors
+                last_exception = e
+                logger.error(f"Unexpected error during request to {endpoint}: {e}", exc_info=True)
+                break # Stop retrying on unexpected errors
 
-            if isinstance(response_data, dict) and response_data.get("success") is False:
-                err_msg = response_data.get("errorMessage", "Unknown API Error")
-                err_code = response_data.get("errorCode")
-                logger.error(f"TopStepX API reported failure at {endpoint}: {err_msg} (Code: {err_code})")
-                raise OperationFailedError(err_msg, provider_error_code=err_code, provider_error_message=err_msg)
-
-            return expected_response_model.model_validate(response_data) if expected_response_model else response_data
-        except httpx.HTTPStatusError as e:
-            raise TradeForgeConnectionError(f"HTTP error {e.response.status_code} on {endpoint}: {e.response.text[:200]}") from e
-        except httpx.RequestError as e:
-            raise TradeForgeConnectionError(f"Request error on {endpoint}: {e}") from e
-        except Exception as e:
-            raise OperationFailedError(f"Unexpected error processing request for {endpoint}: {e}") from e
+        # If all retries failed
+        raise TradeForgeConnectionError(f"Request to {endpoint} failed after {self._MAX_RETRIES} retries.") from last_exception
 
     async def ts_get_accounts(self, only_active: bool = True) -> TSSearchAccountResponse:
         payload = TSSearchAccountRequest(onlyActiveAccounts=only_active).model_dump_json()

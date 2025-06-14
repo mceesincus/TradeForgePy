@@ -8,7 +8,7 @@ from tradeforgepy.utils.time_utils import ensure_utc, UTC_TZ
 
 from .schemas_ts import (
     TSTradingAccountModel, TSContractModel, TSAggregateBarModel, TSOrderModel,
-    TSPositionModel, TSHalfTradeModel,
+    TSPositionModel, TSHalfTradeModel, TSPositionType,
     TSOrderStatus, TSTraderOrderType, TSOrderSide, TSAggregateBarUnit
 )
 from tradeforgepy.core.models_generic import (
@@ -132,7 +132,18 @@ def map_ts_orders_to_generic(ts_orders: List[TSOrderModel], provider_name: str) 
     return generic_orders
 
 def map_ts_position_to_generic(ts_pos: TSPositionModel, provider_name: str) -> GenericPosition:
-    quantity = float(ts_pos.size) if ts_pos.type == 1 else -float(ts_pos.size)
+    if ts_pos.type == TSPositionType.LONG:
+        quantity = float(ts_pos.size)
+    elif ts_pos.type == TSPositionType.SHORT:
+        quantity = -float(ts_pos.size)
+    else:  # Catches TSPositionType.UNDEFINED (0) and any other unexpected values
+        quantity = 0.0
+        logger.warning(
+            f"Received an undefined or unknown position type '{ts_pos.type.value}' for "
+            f"contract {ts_pos.contractId}. Mapping to a flat position (quantity 0). "
+            f"Payload: {ts_pos.model_dump()}"
+        )
+        
     return GenericPosition(
         provider_account_id=str(ts_pos.accountId), provider_contract_id=ts_pos.contractId,
         quantity=quantity, average_entry_price=float(ts_pos.averagePrice),
@@ -156,16 +167,22 @@ def map_ts_trades_to_generic(ts_trades: List[TSHalfTradeModel], provider_name: s
     return [map_ts_trade_to_generic(t, provider_name) for t in ts_trades if t]
 
 # --- Stream Event Mappers ---
-def _parse_ts_stream_timestamp(ts_payload: Dict[str, Any]) -> datetime:
+def _parse_ts_stream_timestamp(ts_payload: Dict[str, Any]) -> Optional[datetime]:
     ts_val = ts_payload.get("lastUpdated") or ts_payload.get("timestamp") or ts_payload.get("creationTimestamp")
-    if ts_val: return ensure_utc(ts_val)
-    return datetime.now(UTC_TZ)
+    if ts_val:
+        return ensure_utc(ts_val)
+    return None
 
 def map_ts_quote_to_generic_event(provider_contract_id: str, ts_quote_data: Dict[str, Any], provider_name: str) -> Optional[QuoteEvent]:
     try:
+        event_timestamp = _parse_ts_stream_timestamp(ts_quote_data)
+        if not event_timestamp:
+            logger.warning(f"Skipping quote event for {provider_contract_id} due to missing timestamp. Payload: {ts_quote_data}")
+            return None
+            
         return QuoteEvent(
             provider_name=provider_name, provider_contract_id=provider_contract_id,
-            timestamp_utc=_parse_ts_stream_timestamp(ts_quote_data),
+            timestamp_utc=event_timestamp,
             bid_price=ts_quote_data.get("bestBid"), ask_price=ts_quote_data.get("bestAsk"),
             last_price=ts_quote_data.get("lastPrice"), provider_specific_data=ts_quote_data
         )
@@ -176,9 +193,15 @@ def map_ts_quote_to_generic_event(provider_contract_id: str, ts_quote_data: Dict
 def map_ts_depth_to_generic_event(provider_contract_id: str, ts_depth_updates: List[Optional[Dict[str, Any]]], provider_name: str) -> Optional[DepthSnapshotEvent]:
     try:
         bids, asks = [], []
-        latest_timestamp = datetime.now(UTC_TZ)
+        latest_timestamp = None
+        
         valid_updates = [u for u in ts_depth_updates if isinstance(u, dict) and 'timestamp' in u]
-        if valid_updates: latest_timestamp = max(ensure_utc(u['timestamp']) for u in valid_updates)
+        if valid_updates:
+            latest_timestamp = max(ensure_utc(u['timestamp']) for u in valid_updates)
+
+        if not latest_timestamp:
+            logger.warning(f"Skipping depth event for {provider_contract_id} due to missing timestamps in all levels. Payload: {ts_depth_updates}")
+            return None
 
         for level_update in ts_depth_updates:
             if not isinstance(level_update, dict): continue
@@ -194,6 +217,7 @@ def map_ts_depth_to_generic_event(provider_contract_id: str, ts_depth_updates: L
         if not bids and not asks: return None
         bids.sort(key=lambda x: x.price, reverse=True)
         asks.sort(key=lambda x: x.price)
+        
         return DepthSnapshotEvent(
             provider_name=provider_name, provider_contract_id=provider_contract_id,
             timestamp_utc=latest_timestamp, bids=bids, asks=asks, is_snapshot=False,
@@ -205,12 +229,17 @@ def map_ts_depth_to_generic_event(provider_contract_id: str, ts_depth_updates: L
 
 def map_ts_market_trade_to_generic_event(provider_contract_id: str, ts_trade_data: Dict[str, Any], provider_name: str) -> Optional[MarketTradeEvent]:
     try:
+        event_timestamp = _parse_ts_stream_timestamp(ts_trade_data)
+        if not event_timestamp:
+            logger.warning(f"Skipping market trade event for {provider_contract_id} due to missing timestamp. Payload: {ts_trade_data}")
+            return None
+
         price = float(ts_trade_data['price'])
         size = float(ts_trade_data['volume'])
         aggressor_side = OrderSide.BUY if ts_trade_data.get('side') == 0 else OrderSide.SELL
         return MarketTradeEvent(
             provider_name=provider_name, provider_contract_id=provider_contract_id,
-            timestamp_utc=_parse_ts_stream_timestamp(ts_trade_data),
+            timestamp_utc=event_timestamp,
             price=price, size=size, aggressor_side=aggressor_side,
             provider_specific_data=ts_trade_data
         )
@@ -222,11 +251,17 @@ def map_ts_account_update_to_generic_event(ts_payload: Dict[str, Any], provider_
     try:
         data_dict = ts_payload.get("data")
         if not isinstance(data_dict, dict): return None
+
+        event_timestamp = _parse_ts_stream_timestamp(data_dict)
+        if not event_timestamp:
+            logger.warning(f"Skipping account update event due to missing timestamp. Payload: {ts_payload}")
+            return None
+
         ts_account_model = TSTradingAccountModel.model_validate(data_dict)
         generic_account = map_ts_account_to_generic(ts_account_model, provider_name)
         return AccountUpdateEvent(
             provider_name=provider_name, provider_account_id=generic_account.provider_account_id,
-            timestamp_utc=datetime.now(UTC_TZ), account_data=generic_account,
+            timestamp_utc=event_timestamp, account_data=generic_account,
             provider_specific_data=ts_payload
         )
     except Exception as e:
@@ -237,6 +272,12 @@ def map_ts_order_update_to_generic_event(ts_payload: Dict[str, Any], provider_na
     try:
         data_dict = ts_payload.get("data")
         if not isinstance(data_dict, dict): return None
+
+        event_timestamp = _parse_ts_stream_timestamp(data_dict)
+        if not event_timestamp:
+            logger.warning(f"Skipping order update event due to missing timestamp. Payload: {ts_payload}")
+            return None
+
         ts_order_model = TSOrderModel.model_validate(data_dict)
         
         generic_order = map_ts_order_details_to_generic(ts_order_model, provider_name)
@@ -245,7 +286,7 @@ def map_ts_order_update_to_generic_event(ts_payload: Dict[str, Any], provider_na
         return OrderUpdateEvent(
             provider_name=provider_name, provider_account_id=generic_order.provider_account_id,
             provider_contract_id=generic_order.provider_contract_id,
-            timestamp_utc=_parse_ts_stream_timestamp(data_dict),
+            timestamp_utc=event_timestamp,
             order_data=generic_order, provider_specific_data=ts_payload
         )
     except Exception as e:
@@ -257,12 +298,18 @@ def map_ts_user_trade_to_generic_event(ts_payload: Dict[str, Any], provider_name
         if ts_payload.get("action") != 0: return None
         data_dict = ts_payload.get("data")
         if not isinstance(data_dict, dict): return None
+
+        event_timestamp = _parse_ts_stream_timestamp(data_dict)
+        if not event_timestamp:
+            logger.warning(f"Skipping user trade event due to missing timestamp. Payload: {ts_payload}")
+            return None
+
         ts_trade_model = TSHalfTradeModel.model_validate(data_dict)
         generic_trade = map_ts_trade_to_generic(ts_trade_model, provider_name)
         return UserTradeEvent(
             provider_name=provider_name, provider_account_id=generic_trade.provider_account_id,
             provider_contract_id=generic_trade.provider_contract_id,
-            timestamp_utc=_parse_ts_stream_timestamp(data_dict),
+            timestamp_utc=event_timestamp,
             trade_data=generic_trade, provider_specific_data=ts_payload
         )
     except Exception as e:
@@ -273,12 +320,18 @@ def map_ts_position_update_to_generic_event(ts_payload: Dict[str, Any], provider
     try:
         data_dict = ts_payload.get("data")
         if not isinstance(data_dict, dict): return None
+
+        event_timestamp = _parse_ts_stream_timestamp(data_dict)
+        if not event_timestamp:
+            logger.warning(f"Skipping position update event due to missing timestamp. Payload: {ts_payload}")
+            return None
+
         ts_pos_model = TSPositionModel.model_validate(data_dict)
         generic_pos = map_ts_position_to_generic(ts_pos_model, provider_name)
         return PositionUpdateEvent(
             provider_name=provider_name, provider_account_id=generic_pos.provider_account_id,
             provider_contract_id=generic_pos.provider_contract_id,
-            timestamp_utc=_parse_ts_stream_timestamp(data_dict),
+            timestamp_utc=event_timestamp,
             position_data=generic_pos, provider_specific_data=ts_payload
         )
     except Exception as e:

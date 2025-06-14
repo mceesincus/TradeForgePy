@@ -58,7 +58,13 @@ async def main():
 
         # 3. Get details of that specific order
         logger.info(f"\nQuerying details for order {order_id}...")
-        the_order = await provider.get_order_by_id(ACCOUNT_ID, order_id)
+        # Note: This method searches recent history. For a newly placed order,
+        # specifying a small search window is more efficient.
+        the_order = await provider.get_order_by_id(
+            provider_account_id=ACCOUNT_ID,
+            provider_order_id=order_id,
+            days_to_search=1  # Be efficient: only search recent history for the new order.
+        )
         if the_order:
             print(the_order.model_dump_json(indent=2))
         else:
