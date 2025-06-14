@@ -23,7 +23,7 @@ from .schemas_ts import (
 )
 from tradeforgepy.exceptions import AuthenticationError, ConnectionError as TradeForgeConnectionError, OperationFailedError, InvalidParameterError, NotFoundError
 from tradeforgepy.utils.time_utils import UTC_TZ
-from tradeforgepy.config import settings
+from tradeforgepy.config import ProviderSettings
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +41,18 @@ class TopStepXHttpClient:
     _INITIAL_BACKOFF_SEC = 1.0
 
     def __init__(self, username: str, api_key: str, environment: str = "DEMO",
-                 connect_timeout: float = 10.0, read_timeout: float = 30.0):
+                 connect_timeout: float = 10.0, read_timeout: float = 30.0,
+                 provider_urls: ProviderSettings = None):
         if not username or not api_key:
             raise ValueError("TopStepX username and api_key must be provided.")
         self.username = username
         self.api_key = api_key
         self.environment = environment.upper()
-        self.base_url = settings.TS_API_URL_DEMO if self.environment == "DEMO" else settings.TS_API_URL_LIVE
+
+        if not provider_urls:
+            raise ValueError("provider_urls must be provided to TopStepXHttpClient.")
+        
+        self.base_url = provider_urls.API_URL_DEMO if self.environment == "DEMO" else provider_urls.API_URL_LIVE
         
         self.timeout_config = httpx.Timeout(connect_timeout, read=read_timeout)
         self.async_client = httpx.AsyncClient(timeout=self.timeout_config, follow_redirects=True)

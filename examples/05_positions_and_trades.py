@@ -4,14 +4,14 @@ import logging
 import os
 import sys
 
-# --- Path Setup ---
+# This allows the script to find the tradeforgepy library from the parent directory.
+# For a real application, you would just 'pip install tradeforgepy' and this would not be needed.
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
-src_path = os.path.join(project_root, 'src')
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-from tradeforgepy.providers.topstepx import TopStepXProvider
+from tradeforgepy import TradeForgePy
 from tradeforgepy.exceptions import TradeForgeError
 from tradeforgepy.config import settings
 
@@ -20,11 +20,16 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 async def main():
-    ACCOUNT_ID = settings.TS_CAPTURE_ACCOUNT_ID
+    ACCOUNT_ID = settings.DEFAULT_CAPTURE_ACCOUNT_ID
+    
+    if not ACCOUNT_ID:
+        logger.error("Please set DEFAULT_CAPTURE_ACCOUNT_ID in your .env file to run this example.")
+        return
+        
     logger.info(f"--- [Example 05: Positions and Trades for Account {ACCOUNT_ID}] ---")
     provider = None
     try:
-        provider = TopStepXProvider()
+        provider = TradeForgePy.create_provider("TopStepX")
         await provider.connect()
         logger.info("Provider connected successfully.")
 
@@ -41,13 +46,17 @@ async def main():
 
         # 2. Get trade history for the last 7 days
         logger.info("\nFetching trade (fill) history for the last 7 days...")
-        trades = await provider.get_trade_history(ACCOUNT_ID)
+        trades = await provider.get_trade_history(
+            provider_account_id=ACCOUNT_ID, 
+            days_to_search=7
+        )
         
         if not trades:
             logger.info("No trades found in the last 7 days.")
         else:
             logger.info(f"Found {len(trades)} trades. Showing the most recent one:")
-            print(trades[0].model_dump_json(indent=2))
+            if trades:
+                print(trades[0].model_dump_json(indent=2))
 
     except TradeForgeError as e:
         logger.error(f"An error occurred: {e}", exc_info=True)

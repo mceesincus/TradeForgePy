@@ -1,8 +1,20 @@
 # examples/10_unsubscribe_streams.py
 import asyncio
 import logging
+import os
+import sys
+
+# This allows the script to find the tradeforgepy library from the parent directory.
+# For a real application, you would just 'pip install tradeforgepy' and this would not be needed.
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from tradeforgepy import TradeForgePy
 from tradeforgepy.core.enums import MarketDataType, StreamConnectionStatus
+from tradeforgepy.config import settings
+from tradeforgepy.exceptions import TradeForgeError
 
 # --- Configuration ---
 # Set up basic logging
@@ -10,24 +22,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("UnsubscribeExample")
 
 # Get the default contract ID from settings (or use a known one)
-try:
-    from tradeforgepy.config import settings
-    CONTRACT_ID = settings.TS_CAPTURE_CONTRACT_ID
-except (ImportError, AttributeError):
-    CONTRACT_ID = "CON.F.US.NQ.M25" # Fallback contract
+CONTRACT_ID = settings.DEFAULT_CAPTURE_CONTRACT_ID
 
 # --- Main Application Logic ---
 async def main():
     """
     Demonstrates how to subscribe to and then unsubscribe from a real-time data stream.
     """
+    if not CONTRACT_ID:
+        logger.error("Please set DEFAULT_CAPTURE_CONTRACT_ID in your .env file to run this example.")
+        return
+
     # 1. Initialize the provider via the main factory
     # This automatically loads credentials from the .env file
     provider = TradeForgePy.create_provider(provider_name="TopStepX")
 
     # 2. Define event handlers to see what's happening
     async def on_event(event):
-        logger.info(f"Received Event: {event.model_dump_json(indent=2)}")
+        logger.info(f"Received Event: {event.event_type.value}")
 
     async def on_status_change(status: StreamConnectionStatus, reason: str):
         logger.info(f"Stream Status Changed: {status.value} - Reason: {reason}")
@@ -40,6 +52,7 @@ async def main():
     provider.on_status_change(on_status_change)
     provider.on_error(on_error)
 
+    runner_task = None
     try:
         # 3. Connect the provider (both HTTP client and stream handlers)
         logger.info("Connecting to the provider...")
@@ -72,13 +85,13 @@ async def main():
         
         logger.info("Example finished successfully.")
 
-    except Exception as e:
+    except (TradeForgeError, Exception) as e:
         logger.error(f"An error occurred during the example run: {e}", exc_info=True)
     finally:
         # 8. Cleanly disconnect the provider
         logger.info("Disconnecting from the provider...")
         await provider.disconnect()
-        if 'runner_task' in locals() and not runner_task.done():
+        if runner_task and not runner_task.done():
             runner_task.cancel()
         logger.info("Disconnected.")
 

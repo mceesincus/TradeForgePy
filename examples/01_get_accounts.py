@@ -4,15 +4,14 @@ import logging
 import os
 import sys
 
-# --- Path Setup ---
-# This allows the script to find the tradeforgepy library
+# This allows the script to find the tradeforgepy library from the parent directory.
+# For a real application, you would just 'pip install tradeforgepy' and this would not be needed.
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
-src_path = os.path.join(project_root, 'src')
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-from tradeforgepy.providers.topstepx import TopStepXProvider
+from tradeforgepy import TradeForgePy
 from tradeforgepy.exceptions import TradeForgeError
 
 # --- Logging ---
@@ -23,8 +22,8 @@ async def main():
     logger.info("--- [Example 01: Get Accounts] ---")
     provider = None
     try:
-        # The provider automatically loads credentials from your .env file
-        provider = TopStepXProvider()
+        # The factory automatically loads and injects the correct settings
+        provider = TradeForgePy.create_provider("TopStepX")
         await provider.connect()
         logger.info("Provider connected successfully.")
 

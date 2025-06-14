@@ -4,14 +4,14 @@ import logging
 import os
 import sys
 
-# --- Path Setup ---
+# This allows the script to find the tradeforgepy library from the parent directory.
+# For a real application, you would just 'pip install tradeforgepy' and this would not be needed.
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
-src_path = os.path.join(project_root, 'src')
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-from tradeforgepy.providers.topstepx import TopStepXProvider
+from tradeforgepy import TradeForgePy
 from tradeforgepy.core.models_generic import GenericStreamEvent
 from tradeforgepy.core.enums import MarketDataType, UserDataType, StreamConnectionStatus
 from tradeforgepy.config import settings
@@ -23,7 +23,15 @@ logger = logging.getLogger(__name__)
 
 async def main():
     logger.info("--- [Example 06: Real-Time Full Stream] ---")
-    provider = TopStepXProvider()
+    
+    account_id = settings.DEFAULT_CAPTURE_ACCOUNT_ID
+    contract_id = settings.DEFAULT_CAPTURE_CONTRACT_ID
+
+    if not account_id or not contract_id:
+        logger.error("Please set DEFAULT_CAPTURE_ACCOUNT_ID and DEFAULT_CAPTURE_CONTRACT_ID in your .env file to run this example.")
+        return
+
+    provider = TradeForgePy.create_provider("TopStepX")
 
     async def on_event(event: GenericStreamEvent):
         """A simple handler to print received events."""
@@ -33,17 +41,18 @@ async def main():
 
     async def on_status(status: StreamConnectionStatus, reason: str):
         logger.info(f"STATUS CHANGE: {status.value} - Reason: {reason}")
+        
+    async def on_error(error: Exception):
+        logger.error(f"STREAM ERROR: {error}", exc_info=True)
 
     try:
         provider.on_event(on_event)
         provider.on_status_change(on_status)
+        provider.on_error(on_error)
 
         await provider.connect()
 
         # Subscribe to everything
-        account_id = settings.TS_CAPTURE_ACCOUNT_ID
-        contract_id = settings.TS_CAPTURE_CONTRACT_ID
-        
         logger.info(f"Subscribing to all market data for {contract_id}...")
         await provider.subscribe_market_data(
             provider_contract_ids=[contract_id],

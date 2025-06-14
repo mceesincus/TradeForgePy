@@ -25,7 +25,7 @@ from tradeforgepy.exceptions import (
     OperationFailedError, NotFoundError, InvalidParameterError
 )
 from tradeforgepy.utils.time_utils import UTC_TZ
-from tradeforgepy.config import settings
+from tradeforgepy.config import ProviderSettings
 
 from .client import TopStepXHttpClient
 from . import mapper
@@ -44,21 +44,23 @@ logger = logging.getLogger(__name__)
 class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
     provider_name: str = "TopStepX"
 
-    def __init__(self, username: Optional[str] = None, api_key: Optional[str] = None,
-                 environment: Optional[str] = None,
+    def __init__(self, settings: ProviderSettings,
                  connect_timeout: float = 10.0, read_timeout: float = 30.0,
                  cache_ttl_seconds: int = 300):
         
-        _username = username or settings.TS_USERNAME
-        _api_key = api_key or settings.TS_API_KEY
-        self.environment = (environment or settings.TS_ENVIRONMENT).upper()
+        self.settings = settings
+        self.environment = self.settings.ENVIRONMENT
 
-        if not _username or not _api_key:
-            raise ConfigurationError("TopStepXProvider requires username and API key, provided either via arguments or a .env file.")
+        if not self.settings.USERNAME or not self.settings.API_KEY:
+            raise ConfigurationError("TopStepXProvider requires USERNAME and API_KEY in its ProviderSettings.")
         
         self.http_client = TopStepXHttpClient(
-            username=_username, api_key=_api_key, environment=self.environment,
-            connect_timeout=connect_timeout, read_timeout=read_timeout
+            username=self.settings.USERNAME,
+            api_key=self.settings.API_KEY,
+            environment=self.environment,
+            connect_timeout=connect_timeout,
+            read_timeout=read_timeout,
+            provider_urls=self.settings
         )
         self._is_connected_http = False
         
@@ -399,9 +401,9 @@ class TopStepXProvider(TradingPlatformAPI, RealTimeStream):
              raise AuthenticationError("Must be connected via provider.connect() before initializing streams.")
         token = self.http_client._token
         
-        # Get URLs from the settings object
-        market_hub_url = settings.TS_MARKET_HUB_LIVE if self.environment == 'LIVE' else settings.TS_MARKET_HUB_DEMO
-        user_hub_url = settings.TS_USER_HUB_LIVE if self.environment == 'LIVE' else settings.TS_USER_HUB_DEMO
+        # Determine URLs from the provider-specific settings object
+        market_hub_url = self.settings.MARKET_HUB_LIVE if self.environment == 'LIVE' else self.settings.MARKET_HUB_DEMO
+        user_hub_url = self.settings.USER_HUB_LIVE if self.environment == 'LIVE' else self.settings.USER_HUB_DEMO
         
         if self.market_stream_handler is None:
             self.market_stream_handler = TopStepXMarketStreamInternal(
