@@ -21,6 +21,8 @@ class OrderType(str, Enum):
     LIMIT = "LIMIT"
     STOP_MARKET = "STOP_MARKET"
     STOP_LIMIT = "STOP_LIMIT"
+    JOIN_BID = "JOIN_BID"
+    JOIN_ASK = "JOIN_ASK"
     # TRAILING_STOP_MARKET = "TRAILING_STOP_MARKET" # This feature is disabled due to provider API ambiguity.
 
 class OrderTimeInForce(str, Enum):
